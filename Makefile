@@ -50,7 +50,7 @@ $(INCLUDE)/colorscheme.h: $(SRC_DIR)/loadresources.c
 
 clean:
 	@echo "Cleaning up..."
-	@rm -rf $(BUILD_DIR) $(BIN_DIR) $(INCLUDE)/colorscheme.h loadresources
+	@rm -rf $(BUILD_DIR) $(BIN_DIR)
 
 install: all
 	@echo "Installing blocks to $(PREFIX)"
