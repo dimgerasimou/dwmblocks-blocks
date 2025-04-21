@@ -17,7 +17,7 @@ typedef enum {
 void forkexecv(const char *path, char **args, const char *argv0);
 
 /*
- * Forks and executes given command.
+ * Forks and executes given command from bin directory.
  */
  void forkexecvp(char **args, const char *argv0);
 
@@ -45,7 +45,7 @@ int get_xmenu_option(const char *menu, const char *argv0);
 /*
  * Writes a log to the file defined by log_path with a timestamp
  * and the name of the caller (argv0). If name str is NULL,
- * it doesn't add it. Has multiple log levels:
+ * it doesn't add it. Has multiple log levels:
  * 	LOG_SILLY: does not write the strerror or log level.
  * 	LOG_INFO:  writes INFO log level but no strerror.
  * 	LOG_WARN:  writes WARN log level and strerror.
@@ -54,26 +54,38 @@ int get_xmenu_option(const char *menu, const char *argv0);
 void logwrite(const char *log, const char *name, const log_level level, const char *argv0);
 
 /*
- * Sends a desktop notification with the given arguments.
+ * Sends a single desktop notification.
  */
 void notify(const char *summary, const char *body, const char *icon, NotifyUrgency urgency, const int format_summary);
 
+/*
+ * Sends a notification and returns the pointer for manipulation of the notification.
+ */
 NotifyNotification* newnotify(const char *summary, const char *body, const char *icon, NotifyUrgency urgency, const int form_sum);
+
+/*
+ * Updates a notification.
+ */
 void updatenotify(NotifyNotification *notification, const char *summary, const char *body, const char *icon, NotifyUrgency urgency, const int timeout, const int form_sum);
+
+/*
+ * Frees the objects related to the notification.
+ */
 void freenotify(NotifyNotification *notification);
 
 /*
- * Works exactly as strcat but with
- * the destination allocated in the heap.
+ * Works exactly as strcat but with the destination allocated in the heap.
  */
 char* strapp(char **dest, const char *src);
 
 /*
- * Trims the string up to the first '\n' character.
- * Returns 1 if it removes any.
+ * Trims the string up to the first '\n' character. Returns 1 if it removes any.
  */
 int trimtonewl(const char *string);
 
+/*
+ * Converts an unsigned int to a string. Allocates the memory.
+ */
 char* uitoa(const unsigned int num);
 
 #endif /* COMMON_H */
