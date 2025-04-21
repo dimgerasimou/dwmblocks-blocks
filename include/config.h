@@ -1,10 +1,9 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-/* battery.c */
 #ifdef BATTERY_C
 #define POWER_MANAGEMENT
-const char battery_kernel_path[] = "/sys/class/power_supply/BAT1";  /* check if this exists and match */
+const char battery_kernel_path[] = "/sys/class/power_supply/BAT1";
 #endif
 
 #ifdef DATE_C
@@ -24,6 +23,12 @@ const char *language_switch_args[] = { "keyboard.sh", NULL };
 
 #ifdef MEMORY_C
 const char *task_manager_args[] = { "st", "-e", "sh", "-c", "htop", NULL };
+#endif
+
+#ifdef INTERNET_C
+const char *tui_internet_args[] = {"st", "-t", "Network Configuration", "-e", "nmtui", NULL};
+const char *wifi_connect_path[] = {"$HOME", ".local", "bin", "dmenu", "dmenu-wifi-prompt", NULL};
+const char *wifi_connect_args[] = {"dmenu-wifi-prompt", NULL};
 #endif
 
 #endif /* CONFIG_H */

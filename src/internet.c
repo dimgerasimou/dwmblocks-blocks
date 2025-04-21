@@ -3,20 +3,19 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define INTERNET_C
+
 #include "nm-dbus-interface.h"
 #include "../include/colorscheme.h"
 #include "../include/common.h"
+#include "../include/config.h"
 
-/* constants and paths */
-const char *nicarr[]   = {"x", "tdenetworkmanager", "wifi-radar"};
-const char *icarr[]    = {CLR_9"󰤮  "NRM, CLR_6"  "NRM, CLR_6"󰤯  "NRM, CLR_6"󰤟  "NRM, CLR_6"󰤢  "NRM, CLR_6"󰤥  "NRM, CLR_6"󰤨  "NRM, CLR_9"󰤫  "NRM};
-const char *nmpath[]   = {"usr", "local", "bin", "st", NULL};
-const char *nmargs[]   = {"st", "-t", "Network Configuration", "-e", "nmtui", NULL};
-const char *wifipath[] = {"$HOME", ".local", "bin", "dmenu", "dmenu-wifi-prompt", NULL};
-const char *wifiargs[] = {"dmenu-wifi-prompt", NULL};
+const char *notif_icons[]  = {"x", "tdenetworkmanager", "wifi-radar"};
+const char *status_icons[] = {CLR_9"󰤮  "NRM, CLR_6"  "NRM, CLR_6"󰤯  "NRM, CLR_6"󰤟  "NRM, CLR_6"󰤢  "NRM, CLR_6"󰤥  "NRM, CLR_6"󰤨  "NRM, CLR_9"󰤫  "NRM};
+const char *menu_string    = "󱛄 Toggle Wifi\t0\n󱛃 Connect to wifi\t1\n󱚾 TUI options\t2";
 
 /* structs */
-struct ip {
+struct Ip {
 	NMIPConfig *cfg;
 	GPtrArray  *arr;
 	const char *add;
@@ -30,13 +29,14 @@ static void execbutton(NMClient *c, int icind);
 static unsigned int getactive(NMClient *c);
 static void nminit(NMClient **c);
 static void printinfo(NMClient *c, const int ind);
+static void togglewifi(NMClient *client);
 static void wifiapp(NMDevice *dev, GString *str);
 
 static void
 comapp(NMDevice *dev, GString *str)
 {
 	NMActiveConnection *ac;
-	struct ip ip4, ip6;
+	struct Ip ip4, ip6;
 	const char *mac;
 
 	ac = nm_device_get_active_connection(dev);
@@ -74,7 +74,7 @@ ethapp(NMDevice *dev, GString *str)
 static void
 execbutton(NMClient *c, int icind)
 {
-	char *env, *path;
+	char *env;
 
 	if (!(env = getenv("BLOCK_BUTTON")))
 		return;
@@ -84,16 +84,30 @@ execbutton(NMClient *c, int icind)
 		printinfo(c, icind);
 		break;
 
-	case 2:
-		path = get_path((char**) nmpath, 1);
-		forkexecv(path, (char**) nmargs, "dwmblocks-internet");
-		free(path);
-		break;
-
 	case 3:
-		path = get_path((char**) wifipath, 1);
-		forkexecv(path, (char**) wifiargs, "dwmblocks-internet");
-		free(path);
+		switch(get_xmenu_option(menu_string, "dwmblocks-internet")) {
+		case 0:
+			togglewifi(c);
+			break;
+		
+		case 1:
+		{
+			char *path;
+			
+			path = get_path((char**) wifi_connect_path, 1);
+			forkexecv(path, (char**) wifi_connect_args, "dwmblocks-internet");
+
+			free(path);
+			break;
+		}
+
+		case 2:
+			forkexecvp((char**) tui_internet_args, "dwmblocks-internet");
+			break;
+		
+		default:
+			break;
+		}
 		break;
 
 	default:
@@ -170,7 +184,7 @@ printinfo(NMClient *c, const int ind)
 	icind = ind > 2 ? 2 : ind;
 
 	if (!devarr) {
-		notify("Network Devices Info", "No network devices detected", (char*) nicarr[0], NOTIFY_URGENCY_NORMAL, 1);
+		notify("Network Devices Info", "No network devices detected", (char*) notif_icons[0], NOTIFY_URGENCY_NORMAL, 1);
 		return;
 	}
 
@@ -201,11 +215,21 @@ printinfo(NMClient *c, const int ind)
 	}
 
 	if (str->len <= 1)
-		notify("Network Devices Info", "No network devices detected", (char*) nicarr[icind], NOTIFY_URGENCY_NORMAL, 1);
+		notify("Network Devices Info", "No network devices detected", (char*) notif_icons[icind], NOTIFY_URGENCY_NORMAL, 1);
 	else
-		notify("Network Devices Info", str->str, (char*) nicarr[icind], NOTIFY_URGENCY_NORMAL, 1);
+		notify("Network Devices Info", str->str, (char*) notif_icons[icind], NOTIFY_URGENCY_NORMAL, 1);
 
 	g_string_free(str, TRUE);
+}
+
+static void
+togglewifi(NMClient *client)
+{
+	gboolean current = nm_client_wireless_get_enabled(client);
+	nm_client_wireless_set_enabled(client, !current);
+
+	const char *msg = current ? "WiFi Disabled" : "WiFi Enabled";
+	notify("WiFi Status", msg, notif_icons[2], NOTIFY_URGENCY_NORMAL, 1);
 }
 
 static void
@@ -255,7 +279,7 @@ main(void)
 		g_object_unref(client);
 	}
 
-	printf(" "BG_1" %s\n", icarr[state]);
+	printf(" "BG_1" %s\n", status_icons[state]);
 
 	return 0;
 }
