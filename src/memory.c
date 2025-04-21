@@ -67,7 +67,7 @@ execbutton(void)
 
 	switch(atoi(env)) {
 	case 3:
-		forkexecvp((char**) task_manager_args, "dwmblocks-memory");
+		forkexecvp((char**) args_task_manager, "dwmblocks-memory");
 		break;
 	
 	default:

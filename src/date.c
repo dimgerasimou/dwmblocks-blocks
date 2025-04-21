@@ -153,7 +153,7 @@ execbutton(void)
 		break;
 
 	case 3:
-		forkexecvp((char **) gui_calendar_args, "dwmblocks-date");
+		forkexecvp((char **) args_gui_calendar, "dwmblocks-date");
 		break;
 
 	default:

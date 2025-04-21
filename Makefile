@@ -9,7 +9,7 @@ BUILD_DIR   := build
 BIN_DIR     := bin
 INCLUDE     := include
 COMMON_SRC  := $(SRC_DIR)/common.c
-BLOCKS      := time bluetooth-menu keyboard battery date kernel bluetooth internet memory power volume
+BLOCKS      := time keyboard battery date kernel bluetooth internet memory power volume
 
 BLOCK_SRCS  := $(addprefix $(SRC_DIR)/, $(addsuffix .c, $(BLOCKS)))
 BLOCK_OBJS  := $(addprefix $(BUILD_DIR)/, $(addsuffix .o, $(BLOCKS)))

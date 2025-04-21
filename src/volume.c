@@ -4,8 +4,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define VOLUME_C
+
 #include "../include/colorscheme.h"
 #include "../include/common.h"
+#include "../include/config.h"
 
 typedef struct {
 	unsigned int volume;
@@ -16,12 +19,6 @@ typedef struct {
 static pa_mainloop *ml = NULL;
 static pa_context *ctx = NULL;
 static pa_mainloop_api *mlapi = NULL;
-
-const char *eeargs[] = {"easyeffects", NULL};
-const char *volinc[] = {"audiocontrol", "sink", "increase", NULL};
-const char *voldec[] = {"audiocontrol", "sink", "decrease", NULL};
-const char *volmut[] = {"audiocontrol", "sink", "mute", NULL};
-const char *acpath[] = { "$HOME", ".local", "bin", "dwm", "audiocontrol", NULL};
 
 static void contextcb(pa_context *c, void *userdata);
 static void execbutton(AudioInfo **a);
@@ -72,24 +69,24 @@ execbutton(AudioInfo **a)
 		break;
 
 	case 2:
-		forkexecv("/usr/bin/easyeffects", (char**) eeargs, "dwmblocks-volume");
+		forkexecvp((char**) args_eqalizer, "dwmblocks-volume");
 		break;
 
 	case 3:
-		path = get_path((char**) acpath, 1);
-		forkexecv(path, (char**) volmut, "dwmblocks-volume");
+		path = get_path((char**) path_volume_control, 1);
+		forkexecv(path, (char**) args_volume_mute, "dwmblocks-volume");
 		free(path);
 		break;
 
 	case 4:
-		path = get_path((char**) acpath, 1);
-		forkexecv(path, (char**) volinc, "dwmblocks-volume");
+		path = get_path((char**) path_volume_control, 1);
+		forkexecv(path, (char**) args_volume_increase, "dwmblocks-volume");
 		free(path);
 		break;
 
 	case 5:
-		path = get_path((char**) acpath, 1);
-		forkexecv(path, (char**) voldec, "dwmblocks-volume");
+		path = get_path((char**) path_volume_control, 1);
+		forkexecv(path, (char**) args_volume_decrase, "dwmblocks-volume");
 		free(path);
 		break;
 

@@ -7,31 +7,23 @@
 #include <signal.h>
 #include <unistd.h>
 
+#define POWER_C
+
 #include "../include/colorscheme.h"
 #include "../include/common.h"
-
-/* paths */
-const char *PATH_SLOCK[]     = {"usr", "local", "bin", "slock", NULL};
-const char *PATH_DWMBLOCKS[] = {"usr", "local", "bin", "dwmblocks", NULL};
-const char *PATH_OPTIMUS[]   = {"bin", "optimus-manager", NULL};
-const char *PATH_CLIPDEL[]   = {"bin", "sh", NULL };
-
-/* args */
-const char *ARGS_SLOCK[]              = {"slock", NULL};
-const char *ARGS_DWMBLOCKS[]          = {"dwmblocks", NULL};
-const char *ARGS_CLIPDEL[]            = {"sh", "-c", "clipdel -d \".*\"", NULL};
-const char *ARGS_OPTIMUS_INTEGRATED[] = {"optimus-manager", "--no-confirm", "--switch", "integrated", NULL};
-const char *ARGS_OPTIMUS_HYBRID[]     = {"optimus-manager", "--no-confirm", "--switch", "hybrid", NULL};
-const char *ARGS_OPTIMUS_NVIDIA[]     = {"optimus-manager", "--no-confirm", "--switch", "nvidia", NULL};
+#include "../include/config.h"
 
 /* menu prompts */
-const char *MENU_POWER     = " Shutdown\t0\n Reboot\t1\n\n󰗽 Logout\t2\n Lock\t3\n\n Restart DwmBlocks\t4\n󰘚 Optimus Manager\t5\n󰅌 Clipmenu\t6";
-const char *MENU_OPTIMUS   = "Integrated\t0\nHybrid\t1\nNvidia\t2";
-const char *MENU_CLIPBOARD = "Pause clipmenu for 1 minute\t0\nClear clipboard\t1";
-const char *MENU_YES_NO    = "Are you sure?\t-1\nYes\t1\nNo\t0";
+const char *menu_power           = " Shutdown\t0\n Reboot\t1\n\n󰗽 Logout\t2\n Lock\t3\n\n Restart DwmBlocks\t4";
+const char *menu_power_optimus   = "\n󰘚 Optimus Manager\t5";
+const char *menu_power_clipboard = "\n󰅌 Clipmenu\t6";
+const char *menu_optimus         = "Integrated\t0\nHybrid\t1\nNvidia\t2";
+const char *menu_clipboard       = "Pause clipmenu for 1 minute\t0\nClear clipboard\t1";
+const char *menu_yes_no          = "Are you sure?\t-1\nYes\t1\nNo\t0";
 
+#ifdef CLIPBOARD
 static void
-clipboard_pause(const unsigned int seconds)
+clippause(const unsigned int seconds)
 {
 	switch (fork()) {
 	case -1:
@@ -47,8 +39,7 @@ clipboard_pause(const unsigned int seconds)
 			pid = get_pid_of("bash\0/usr/bin/clipmenud", "dmblocks-power");
 			if (pid < 0) {
 				errno = ESRCH;
-				logwrite("Couldn't get pID of", "clipmenud", LOG_ERROR, "dwmblocks-power");
-				exit(ESRCH);
+				logwrite("Couldn't get pID of", "clipmenud", LOG_FATAL, "dwmblocks-power");
 			}
 		}
 
@@ -68,109 +59,107 @@ clipboard_pause(const unsigned int seconds)
 }
 
 static void
-clipboard_menu(void)
+clipmenu(void)
 {
-	switch (get_xmenu_option(MENU_CLIPBOARD, "dwmblocks-power")) {
+	switch (get_xmenu_option(menu_clipboard, "dwmblocks-power")) {
 	case 0:
-		clipboard_pause(60);
+		clippause(60);
 		break;
 
 	case 1:
-	{
-		char *path = NULL;
-
-		path = get_path((char**) PATH_CLIPDEL, 1);
-		forkexecv(path, (char**) ARGS_CLIPDEL, "dwmblocks-power");
-
-		free(path);
+		forkexecvp((char**) args_clipboard_delete, "dwmblocks-power");
 		break;
-	}
 
 	default:
 		break;
 	}
 }
+#endif
+
+#ifdef POWER_MANAGEMENT
+const char *args_optimus_integrated[] = {"optimus-manager", "--no-confirm", "--switch", "integrated", NULL};
+const char *args_optimus_hybrid[]     = {"optimus-manager", "--no-confirm", "--switch", "hybrid", NULL};
+const char *args_optimus_nvidia[]     = {"optimus-manager", "--no-confirm", "--switch", "nvidia", NULL};
 
 static void
-restart_dwmblocks(void)
+optimusmenu(void)
+{
+	switch (get_xmenu_option(menu_optimus, "dwmblocks-power")) {
+	case 0:
+		if (get_xmenu_option(menu_yes_no, "dwmblocks-power") == 1)
+			forkexecvp((char**) args_optimus_integrated, "dwmblocks-power");
+		break;
+
+	case 1:
+		if (get_xmenu_option(menu_yes_no, "dwmblocks-power") == 1)
+			forkexecvp((char**) args_optimus_hybrid, "dwmblocks-power");
+		break;
+
+	case 2:
+		if (get_xmenu_option(menu_yes_no, "dwmblocks-power") == 1)
+			forkexecvp((char**) args_optimus_nvidia, "dwmblocks-power");
+		break;
+
+	default:
+		break;
+	}
+}
+#endif
+
+static void
+restartdwmblocks(void)
 {
 	char *path = NULL;
 	int pid = 0;
 
-	path = get_path((char**) PATH_DWMBLOCKS, 1);
+	path = get_path((char**) path_dwmblocks, 1);
 
 	if ((pid = get_pid_of("dwmblocks", "dwmblocks-power")) == -ENOENT) {
 		pid = get_pid_of(path, "dwmblocks-power");
 	}
 
-	if (pid <= 0) {
-		logwrite("Failed to get the pID of", path, LOG_ERROR, "dwmblocks-power");
-		exit(errno);
-	}
+	if (pid <= 0)
+		logwrite("Failed to get the pID of", path, LOG_FATAL, "dwmblocks-power");
 
 	kill(pid, SIGTERM);
 	unsetenv("BLOCK_BUTTON");
-	forkexecv(path, (char**) ARGS_DWMBLOCKS, "dwmblocks-power");
+	forkexecvp((char**) args_dwmblocks, "dwmblocks-power");
 	free(path);
 }
 
 static void
-lock_screen(void)
+lockscreen(void)
 {
-	char *path = NULL;
-
-	path = get_path((char**) PATH_SLOCK, TRUE);
 	sleep(1);
-	forkexecv(path, (char**) ARGS_SLOCK, "dwmblocks-power");
-	free(path);
+	forkexecvp((char**) args_lockscreen, "dwmblocks-power");
 }
 
 static void
-optimus_menu(void)
+mainmenu(void)
 {
-	char *path = NULL;
+	char *menu = strdup(menu_power);
+
+	#ifdef POWER_MANAGEMENT
+		strapp(&menu, menu_power_optimus);
+	#endif
 	
-	path = get_path((char**) PATH_OPTIMUS, 1);
+	#ifdef CLIPBOARD
+		strapp(&menu, menu_power_clipboard);
+	#endif
 
-	switch (get_xmenu_option(MENU_OPTIMUS, "dwmblocks-power")) {
+	switch (get_xmenu_option(menu, "dwmblocks-power")) {
 	case 0:
-		if (get_xmenu_option(MENU_YES_NO, "dwmblocks-power") == 1)
-			forkexecv(path, (char**) ARGS_OPTIMUS_INTEGRATED, "dwmblocks-power");
-		break;
-
-	case 1:
-		if (get_xmenu_option(MENU_YES_NO, "dwmblocks-power") == 1)
-			forkexecv(path, (char**) ARGS_OPTIMUS_HYBRID, "dwmblocks-power");
-		break;
-
-	case 2:
-		if (get_xmenu_option(MENU_YES_NO, "dwmblocks-power") == 1)
-			forkexecv(path, (char**) ARGS_OPTIMUS_NVIDIA, "dwmblocks-power");
-		break;
-
-	default:
-		break;
-	}
-
-	free(path);
-}
-
-static void
-main_menu(void)
-{
-	switch (get_xmenu_option(MENU_POWER, "dwmblocks-power")) {
-	case 0:
-		if (get_xmenu_option(MENU_YES_NO, "dwmblocks-power") == 1)
+		if (get_xmenu_option(menu_yes_no, "dwmblocks-power") == 1)
 			execl("/bin/shutdown", "shutdown", "now", NULL);
 		break;
 
 	case 1:
-		if (get_xmenu_option(MENU_YES_NO, "dwmblocks-power") == 1)
+		if (get_xmenu_option(menu_yes_no, "dwmblocks-power") == 1)
 			execl("/bin/shutdown", "shutdown", "now", "-r", NULL);
 		break;
 
 	case 2:
-		if (get_xmenu_option(MENU_YES_NO, "dwmblocks-power") == 1) {
+		if (get_xmenu_option(menu_yes_no, "dwmblocks-power") == 1) {
 			int pid = get_pid_of("/usr/local/bin/dwm", "dwmblocks-power");
 			if (pid > 0) {
 				kill(pid, SIGTERM);
@@ -182,29 +171,33 @@ main_menu(void)
 		break;
 
 	case 3:
-		lock_screen();
+		lockscreen();
 		break;
 
 	case 4:
-		restart_dwmblocks();
+		restartdwmblocks();
 		break;
 
+	#ifdef POWER_MANAGEMENT
 	case 5:
-		optimus_menu();
+		optimusmenu();
 		break;
-
+	#endif
+	
+	#ifdef CLIPBOARD
 	case 6:
-		clipboard_menu();
+		clipmenu();
 		break;
-
+	#endif
+	
 	default:
 		break;
 	}
-
+	free(menu);
 }
 
 static void
-exec_block_button(void)
+execbutton(void)
 {
 	char *env = NULL;
 
@@ -213,13 +206,13 @@ exec_block_button(void)
 	if (!env || strcmp(env, "1"))
 		return;
 
-	main_menu();
+	mainmenu();
 }
 
 int
 main(void)
 {
-	exec_block_button();
+	execbutton();
 	printf(CLR_1 BG_1" "NRM"\n");
 
 	return 0;

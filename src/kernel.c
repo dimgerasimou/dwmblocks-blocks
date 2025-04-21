@@ -46,8 +46,8 @@ execbutton(unsigned int  *aur, unsigned int *pm)
 
 		n = newnotify("Packages", "Getting packages upgrade info..", "tux", NOTIFY_URGENCY_NORMAL, 1);
 
-		*aur = getupdates(aur_updates_cmd);
-		*pm  = getupdates(pm_updates_cmd);
+		*aur = getupdates(cmd_aur_updates);
+		*pm  = getupdates(cmd_pm_updates);
 
 		strapp(&body, "󰏖 Pacman Updates: ");
 		strapp(&body, uitoa(*pm));
@@ -61,7 +61,7 @@ execbutton(unsigned int  *aur, unsigned int *pm)
 	}
 
 	case 3:
-		forkexecvp((char**) update_cmd_args, "dwmblocks-kernel");
+		forkexecvp((char**) args_update_cmd, "dwmblocks-kernel");
 		break;
 
 	default:
@@ -79,8 +79,8 @@ main(void)
 
 	execbutton(&aur, &pm);
 
-	aur = aur == 0 ? getupdates(aur_updates_cmd) : aur;
-	pm  = pm == 0  ? getupdates(pm_updates_cmd)  : pm;
+	aur = aur == 0 ? getupdates(cmd_aur_updates) : aur;
+	pm  = pm == 0  ? getupdates(cmd_pm_updates)  : pm;
 
 	if (uname(&buf))
 		logwrite("Failed in allocatting utsname struct", NULL, LOG_FATAL, "dwmblocks-kernel");

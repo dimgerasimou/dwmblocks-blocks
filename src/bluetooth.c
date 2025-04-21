@@ -4,20 +4,16 @@
 #include <unistd.h>
 #include <dbus/dbus.h>
 
+#define BLUETOOTH_C
+
 #include "../include/colorscheme.h"
 #include "../include/common.h"
+#include "../include/config.h"
 
-const char *BLUETUITH_PATH   = "/usr/local/bin/st";
-const char *BLUETUITH_ARGS[] = { "st", "-e", "bluetuith", NULL };
-const char *MENU_PATH[]      = {"$HOME", ".local", "bin", "dwmblocks", "bluetooth-menu"};
-const char *MENU_ARGS[]      = {"bluetooth-menu", NULL};
-const char *ICON_LIST[]      = {"󰂲", "󰂯", "󰥰"};
-const char *BT_SHOW_CMD      = "bluetoothctl show";
-const char *BT_INFO_CMD      = "bluetoothctl info";
-const char *BT_CON_CMD       = "bluetoothctl devices Connected";
+const char *bt_icons[] = {"󰂲", "󰂯", "󰥰"};
 
 static int
-get_bluetooth_adapter_state(DBusConnection  *conn, DBusError *err)
+getbtadapterstate(DBusConnection  *conn, DBusError *err)
 {
 	DBusMessage     *msg, *reply;
 	DBusMessageIter  args, replyArgs;
@@ -61,65 +57,9 @@ get_bluetooth_adapter_state(DBusConnection  *conn, DBusError *err)
 
 	return powered;
 }
-/*
+
 static int
-get_bluetooth_playback_state(DBusConnection  *conn, DBusError *err)
-{
-	DBusMessage     *msg, *reply;
-	DBusMessageIter  args, variant;
-
-	const char  *iface   = "org.bluez.MediaTransport1";
-	const char  *prop    = "State";
-
-	msg = dbus_message_new_method_call("org.bluez", "/org/bluez/hci0",
-	                                   "org.freedesktop.DBus.Properties", "Get");
-
-	if (!msg) {
-		logwrite("Failed to create DBus message.", NULL, LOG_WARN, "dwmblocks-bluetooth");
-		return -1;
-	}
-
-	dbus_message_iter_init_append(msg, &args);
-	dbus_message_iter_append_basic(&args, DBUS_TYPE_STRING, &iface);
-	dbus_message_iter_append_basic(&args, DBUS_TYPE_STRING, &prop);
-
-	reply = dbus_connection_send_with_reply_and_block(conn, msg, -1, err);
-	dbus_message_unref(msg);
-
-	if (dbus_error_is_set(err)) {
-		logwrite("D-Bus Error:", err->message, LOG_WARN, "dwmblocks-bluetooth");
-		dbus_error_free(err);
-		return -1;
-	}
-
-	if (!reply) {
-		logwrite("D-Bus: No reply received.", NULL, LOG_WARN, "dwmblocks-bluetooth");
-		return -1;
-	}
-
-	if (!(dbus_message_iter_init(reply, &args) && DBUS_TYPE_VARIANT == dbus_message_iter_get_arg_type(&args))) {
-		dbus_message_unref(reply);
-		return 1;
-	}
-
-	dbus_message_iter_recurse(&args, &variant);
-
-	if (DBUS_TYPE_STRING == dbus_message_iter_get_arg_type(&variant)) {
-		const char *state;
-
-		dbus_message_iter_get_basic(&variant, &state);
-		if (!strcmp(state, "active")) {
-			dbus_message_unref(reply);
-			return 2;
-		}
-	}
-
-	dbus_message_unref(reply);
-	return 1;
-}
-*/
-static int
-get_bluetooth_state(void)
+getbtstate(void)
 {
 	DBusConnection *conn  = NULL;
 	DBusError       err;
@@ -134,21 +74,100 @@ get_bluetooth_state(void)
 		return -1;
 	}
 
-	state = get_bluetooth_adapter_state(conn, &err);
+	state = getbtadapterstate(conn, &err);
 
 	if (state != 1) {
 		dbus_connection_unref(conn);
 		return state;
 	}
 
-	// state = get_bluetooth_playback_state(conn, &err);
-
 	dbus_connection_unref(conn);
 	return state;
 }
 
 static void
-exec_block_button(void)
+togglebt(void)
+{
+	DBusConnection  *conn;
+	DBusMessage     *msg;
+	DBusMessage     *reply;
+	DBusMessageIter  args;
+	DBusMessageIter  replyArgs;
+	DBusMessageIter  valueIter;
+	DBusError        err;
+
+	const char  *iface   = "org.bluez.Adapter1";
+	const char  *prop    = "Powered";
+	dbus_bool_t  powered = FALSE;
+
+	dbus_error_init(&err);
+
+	if (!(conn = dbus_bus_get(DBUS_BUS_SYSTEM, &err))) {
+		logwrite("Failed to connect to the DBus system bus.", err.message, LOG_WARN, "dwmblocks-bluetooth-menu");
+		dbus_error_free(&err);
+		exit(EXIT_FAILURE);
+	}
+
+	msg = dbus_message_new_method_call("org.bluez", "/org/bluez/hci0",
+	                                   "org.freedesktop.DBus.Properties", "Get");
+
+	if (!msg) {
+		logwrite("Failed to create DBus message.", NULL, LOG_WARN, "dwmblocks-bluetooth-menu");
+		exit(EXIT_FAILURE);
+	}
+
+	dbus_message_iter_init_append(msg, &args);
+	dbus_message_iter_append_basic(&args, DBUS_TYPE_STRING, &iface);
+	dbus_message_iter_append_basic(&args, DBUS_TYPE_STRING, &prop);
+
+	reply = dbus_connection_send_with_reply_and_block(conn, msg, -1, &err);
+	dbus_message_unref(msg);
+
+	if (!reply) {
+		logwrite("Failed to get Bluetooth Powered State.", err.message, LOG_WARN, "dwmblocks-bluetooth-menu");
+		dbus_error_free(&err);
+		exit(EXIT_FAILURE);
+	}
+
+	if (dbus_message_iter_init(reply, &replyArgs)) {
+		DBusMessageIter variant;
+		dbus_message_iter_recurse(&replyArgs, &variant);
+		dbus_message_iter_get_basic(&variant, &powered);
+	}
+	dbus_message_unref(reply);
+
+	powered = !powered;
+
+	msg = dbus_message_new_method_call("org.bluez", "/org/bluez/hci0",
+	                                   "org.freedesktop.DBus.Properties", "Set");
+
+	if (!msg) {
+		logwrite("Failed to create DBus message.", NULL, LOG_WARN, "dwmblocks-bluetooth-menu");
+		exit(EXIT_FAILURE);
+	}
+
+	dbus_message_iter_init_append(msg, &args);
+	dbus_message_iter_append_basic(&args, DBUS_TYPE_STRING, &iface);
+	dbus_message_iter_append_basic(&args, DBUS_TYPE_STRING, &prop);
+
+	dbus_message_iter_open_container(&args, DBUS_TYPE_VARIANT, "b", &valueIter);
+	dbus_message_iter_append_basic(&valueIter, DBUS_TYPE_BOOLEAN, &powered);
+	dbus_message_iter_close_container(&args, &valueIter);
+
+	reply = dbus_connection_send_with_reply_and_block(conn, msg, -1, &err);
+	dbus_message_unref(msg);
+
+	if (!reply) {
+		logwrite("Failed to set Bluetooth Powered state.", err.message, LOG_WARN, "dwmblocks-bluetooth-menu");
+		dbus_error_free(&err);
+		exit(EXIT_FAILURE);
+	}
+
+	dbus_message_unref(reply);
+}
+
+static void
+execbutton(void)
 {
 	char *env = NULL;
 
@@ -156,16 +175,12 @@ exec_block_button(void)
 		return;
 
 	switch (atoi(env)) {
-	case 1:
-	{
-		char *path = get_path((char**) MENU_PATH, 1);
-		forkexecv(path, (char**) MENU_ARGS, "dwmblocks-bluetooth");
-		free(path);
-		break;
-	}
-
 	case 2:
-		forkexecv(BLUETUITH_PATH, (char**) BLUETUITH_ARGS, "dwmblocks-bluetooth");
+		togglebt();
+		break;
+
+	case 1:
+		forkexecvp((char**) args_tui_settings, "dwmblocks-bluetooth");
 		break;
 
 	default:
@@ -178,14 +193,14 @@ main(void)
 {
 	int state;
 
-	exec_block_button();
+	execbutton();
 
-	state = get_bluetooth_state();
+	state = getbtstate();
 
 	if (state < 0)
 		return -state;
 
-	printf(CLR_4 BG_1" %s " NRM "\n", ICON_LIST[state]);
+	printf(CLR_4 BG_1" %s " NRM "\n", bt_icons[state]);
 
 	return EXIT_SUCCESS;
 }

@@ -94,15 +94,15 @@ execbutton(NMClient *c, int icind)
 		{
 			char *path;
 			
-			path = get_path((char**) wifi_connect_path, 1);
-			forkexecv(path, (char**) wifi_connect_args, "dwmblocks-internet");
+			path = get_path((char**) path_wifi_connect, 1);
+			forkexecv(path, (char**) args_wifi_connect, "dwmblocks-internet");
 
 			free(path);
 			break;
 		}
 
 		case 2:
-			forkexecvp((char**) tui_internet_args, "dwmblocks-internet");
+			forkexecvp((char**) args_tui_internet, "dwmblocks-internet");
 			break;
 		
 		default:

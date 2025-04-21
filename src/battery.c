@@ -116,7 +116,7 @@ getcapacity(void)
 	char         *path = NULL;
 	unsigned int  ret  = 0;
 
-	strapp(&path, battery_kernel_path);
+	strapp(&path, path_battery_kernel);
 	strapp(&path, "/capacity");
 
 	if (!(fp = fopen(path, "r")))
@@ -136,7 +136,7 @@ getstatus(void)
 	FILE *fp   = NULL;
 	char *path = NULL;
 
-	strapp(&path, battery_kernel_path);
+	strapp(&path, path_battery_kernel);
 	strapp(&path, "/status");
 
 	if (!(fp = fopen(path, "r")))

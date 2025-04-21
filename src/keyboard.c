@@ -35,10 +35,10 @@ execbutton(void)
 	switch(atoi(env)) {
 	case 1:
 	{
-		char *path = get_path((char**) language_switch_path, 1);
+		char *path = get_path((char**) path_language_switch, 1);
 
 		unsetenv("BLOCK_BUTTON");
-		forkexecv(path, (char**) language_switch_args, "dwmblocks-keyboard");
+		forkexecv(path, (char**) args_language_switch, "dwmblocks-keyboard");
 
 		free(path);
 		break;
