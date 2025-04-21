@@ -1,4 +1,5 @@
 #include <errno.h>
+#include <libnotify/notify.h>
 #include <linux/limits.h>
 #include <signal.h>
 #include <string.h>
@@ -77,6 +78,25 @@ forkexecv(const char *path, char **args, const char *argv0)
 		setsid();
 		execv(path, args);
 		logwrite("execv() failed for", args[0], LOG_FATAL, argv0);
+		break;
+
+	default:
+		break;
+	}
+}
+
+void
+forkexecvp(char **args, const char *argv0)
+{
+	switch (fork()) {
+	case -1:
+		logwrite("fork() failed", NULL, LOG_FATAL, argv0);
+		break;
+
+	case 0:
+		setsid();
+		execvp(args[0], args);
+		logwrite("execvp() failed for", args[0], LOG_FATAL, argv0);
 		break;
 
 	default:
@@ -348,6 +368,57 @@ notify(const char *summary, const char *body, const char *icon, NotifyUrgency ur
 	free(sum);
 }
 
+NotifyNotification*
+newnotify(const char *summary, const char *body, const char *icon, NotifyUrgency urgency, const int form_sum)
+{
+	char               *sum;
+	NotifyNotification *notification;
+
+	if (form_sum) {
+		sum = format_summary(summary, body);
+	} else {
+		sum = malloc((strlen(summary) + 1) * sizeof(char));
+		strcpy(sum, summary);
+	}
+
+	notify_init("dwmblocks");
+
+	notification = notify_notification_new(sum, body, icon);
+	notify_notification_set_urgency(notification, urgency);
+	notify_notification_show(notification, NULL);
+
+	free(sum);
+	return notification;
+}
+
+void
+updatenotify(NotifyNotification *notification, const char *summary, const char *body, const char *icon, NotifyUrgency urgency, const int timeout, const int form_sum)
+{
+	char *sum;
+
+	if (form_sum) {
+		sum = format_summary(summary, body);
+	} else {
+		sum = malloc((strlen(summary) + 1) * sizeof(char));
+		strcpy(sum, summary);
+	}
+
+	notify_notification_update(notification, sum, body, icon);
+	notify_notification_set_urgency(notification, urgency);
+	if (timeout)
+		notify_notification_set_timeout(notification, timeout);
+
+	notify_notification_show(notification, NULL);
+	free(sum);
+}
+
+void
+freenotify(NotifyNotification *notification)
+{
+	g_object_unref(G_OBJECT(notification));
+	notify_uninit();
+}
+
 char*
 strapp(char **dest, const char *src)
 {
@@ -385,4 +456,31 @@ trimtonewl(const char *string)
 	}
 
 	return 0;
+}
+
+char*
+uitoa(const unsigned int num)
+{
+	char    *ret     = NULL;
+	size_t  digits   = 0;
+	int     snCheck = 0;
+
+	for (unsigned int i = num; i > 0; i = i/10)
+		digits++;
+	if (!digits)
+		digits++;
+
+	if (!(ret = malloc((digits + 1) * sizeof(char)))) {
+		logwrite("malloc() failed. Returned NULL pointer", NULL, LOG_ERROR, "dwmblocks-battery");
+		return NULL;
+	}
+
+	snCheck = snprintf(ret, digits + 1, "%u", num);
+
+	if (snCheck < 0 || snCheck > (int) digits) {
+		logwrite("snprintf() failed. Buffer overflow", NULL, LOG_ERROR, "dwmblocks-battery");
+		return NULL;
+	}
+
+	return ret;
 }

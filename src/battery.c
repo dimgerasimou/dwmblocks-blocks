@@ -4,14 +4,12 @@
 #include <string.h>
 #include <unistd.h>
 
+#define BATTERY_C
+#define BUFFER_SIZE 64
+
 #include "../include/colorscheme.h"
 #include "../include/common.h"
-
-#define BATTERY_C
-
 #include "../include/config.h"
-
-#define BUFFER_SIZE 64
 
 const char *battery_icon_list[]  = { CLR_1" ", CLR_3" ", CLR_2" ", CLR_2" ", CLR_2" " };
 
@@ -85,35 +83,8 @@ send_notification(const char *capacity, const char *status)
 
 #endif /* POWER_MANAGEMENT */
 
-static char*
-uitoa(const unsigned int num)
-{
-	char    *ret     = NULL;
-	size_t  digits   = 0;
-	int     snCheck = 0;
-
-	for (unsigned int i = num; i > 0; i = i/10)
-		digits++;
-	if (!digits)
-		digits++;
-
-	if (!(ret = malloc((digits + 1) * sizeof(char)))) {
-		logwrite("malloc() failed. Returned NULL pointer", NULL, LOG_ERROR, "dwmblocks-battery");
-		return NULL;
-	}
-
-	snCheck = snprintf(ret, digits + 1, "%u", num);
-
-	if (snCheck < 0 || snCheck > (int) digits) {
-		logwrite("snprintf() failed. Buffer overflow", NULL, LOG_ERROR, "dwmblocks-battery");
-		return NULL;
-	}
-
-	return ret;
-}
-
 static void
-execblockbutton(const unsigned int capacity, const char *status)
+execbutton(const unsigned int capacity, const char *status)
 {
 	char *env = NULL;
 
@@ -188,7 +159,7 @@ main(void)
 	char         *status   = getstatus();
 	unsigned int  capacity = getcapacity();
 
-	execblockbutton(capacity, status);
+	execbutton(capacity, status);
 
 	if(!strcmp(status, "Charging")) {
 		printf(CLR_3 BG_1" "NRM"\n");

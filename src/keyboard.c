@@ -4,11 +4,11 @@
 #include <X11/XKBlib.h>
 #include <X11/extensions/XKBrules.h>
 
+#define KEYBOARD_C
+
 #include "../include/colorscheme.h"
 #include "../include/common.h"
-
-const char *SWITCH_PATH[] = { "$HOME", ".local", "bin", "dwm", "keyboard.sh", NULL };
-const char *SWITCH_ARGS[] = { "keyboard.sh", NULL };
+#include "../include/config.h"
 
 static void
 XkbRF_FreeVarDefs(XkbRF_VarDefsRec *var_defs)
@@ -25,7 +25,7 @@ XkbRF_FreeVarDefs(XkbRF_VarDefsRec *var_defs)
 }
 
 static void
-exec_block_button(void)
+execbutton(void)
 {
 	char *env = NULL;
 
@@ -35,10 +35,10 @@ exec_block_button(void)
 	switch(atoi(env)) {
 	case 1:
 	{
-		char *path = get_path((char**) SWITCH_PATH, 1);
+		char *path = get_path((char**) language_switch_path, 1);
 
 		unsetenv("BLOCK_BUTTON");
-		forkexecv(path, (char**) SWITCH_ARGS, "dwmblocks-keyboard");
+		forkexecv(path, (char**) language_switch_args, "dwmblocks-keyboard");
 
 		free(path);
 		break;
@@ -57,7 +57,7 @@ main(void)
 	XkbStateRec      state;
 	XkbRF_VarDefsRec vd;
 
-	exec_block_button();
+	execbutton();
 
 	if (!(dpy = XOpenDisplay(NULL)))
 		logwrite("XOpenDisplay() failed", NULL, LOG_FATAL, "dwmblocks-keyboard");

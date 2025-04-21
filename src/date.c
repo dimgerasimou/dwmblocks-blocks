@@ -4,14 +4,12 @@
 #include <time.h>
 #include <unistd.h>
 
+#define DATE_C
+#define BUFFER_SIZE 64
+
 #include "../include/colorscheme.h"
 #include "../include/common.h"
-
-#define DATE_C
-
 #include "../include/config.h"
-
-#define BUFFER_SIZE 64
 
 const char *months_string[] = {"January",    "February", "March",    "April",
                                "May",        "June",     "July",     "August",
@@ -142,7 +140,7 @@ printcalendar(void)
 }
 
 static void
-execblockbutton(void)
+execbutton(void)
 {
 	char *env = NULL;
 
@@ -152,18 +150,11 @@ execblockbutton(void)
 	switch (atoi(env)) {
 	case 1:
 		printcalendar();
-		return;
+		break;
 
 	case 3:
-	{
-		char *path;
-
-		path = get_path((char**) gui_calender_path, 1);
-		forkexecv(path, (char **) gui_calendar_args, "dwmblocks-date");
-
-		free(path);
-		return;
-	}
+		forkexecvp((char **) gui_calendar_args, "dwmblocks-date");
+		break;
 
 	default:
 		break;
@@ -176,7 +167,7 @@ main()
 	struct tm *lt = NULL;
 	time_t     ct = 0;
 
-	execblockbutton();
+	execbutton();
 	
 	ct = time(NULL);
 	lt = localtime(&ct);

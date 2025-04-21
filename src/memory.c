@@ -3,14 +3,15 @@
 #include <string.h>
 #include <unistd.h>
 
+#define MEMORY_C
+
 #include "../include/colorscheme.h"
 #include "../include/common.h"
+#include "../include/config.h"
 
-const char *HTOP_PATH[] = { "usr", "local", "bin", "st", NULL };
-const char *HTOP_ARGS[] = { "st", "-e", "sh", "-c", "htop", NULL };
 
 static long
-get_used_memory(void)
+getmemoryusage(void)
 {
 	char  buffer[128];
 	FILE *fp   = NULL;
@@ -57,7 +58,7 @@ get_used_memory(void)
 }
 
 static void
-exec_block_button(void)
+execbutton(void)
 {
 	char *env = NULL;
 
@@ -65,14 +66,9 @@ exec_block_button(void)
 		return;
 
 	switch(atoi(env)) {
-	case 2:
-	{
-		char *path = get_path((char**) HTOP_PATH, 1);
-
-		forkexecv(path, (char**) HTOP_ARGS, "dwmblocks-memory");
-		free(path);
+	case 3:
+		forkexecvp((char**) task_manager_args, "dwmblocks-memory");
 		break;
-	}
 	
 	default:
 		break;
@@ -82,7 +78,7 @@ exec_block_button(void)
 int
 main(void)
 {
-	exec_block_button();
-	printf(CLR_3"   %.1lfGiB"NRM"\n", ((get_used_memory())/1024.0)/1024.0);
+	execbutton();
+	printf(CLR_3"   %.1lfGiB"NRM"\n", ((getmemoryusage())/1024.0)/1024.0);
 	return 0;
 }

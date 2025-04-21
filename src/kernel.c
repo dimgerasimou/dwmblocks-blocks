@@ -1,21 +1,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/stat.h>
 #include <sys/utsname.h>
 #include <unistd.h>
 
-#include "../include/colorscheme.h"
-#include "../include/common.h"
-
+#define KERNEL_C
 #define BUF_SIZE 64
 
-const char *updatecmdpath   = "/usr/local/bin/st";
-const char *updatecmdargs[] = {"st", "-t", "System Upgrade", "-e", "sh", "-c", "echo \"Upgrading system\" && paru", NULL};
-const char *aurupdatescmd   = "/bin/paru -Qua";
-const char *pmupdatescmd    = "/bin/checkupdates";
+#include "../include/colorscheme.h"
+#include "../include/common.h"
+#include "../include/config.h"
 
-static int
+static unsigned int
 getupdates(const char *cmd)
 {
 	FILE *ep;
@@ -34,46 +30,38 @@ getupdates(const char *cmd)
 	return counter;
 }
 
-static char*
-uitoa(const unsigned int num)
-{
-	size_t digits = 0;
-	char   *ret;
-
-	for (unsigned int i = num; i > 0; i = i/10)
-		digits++;
-	if (!digits)
-		digits++;
-
-	if (!(ret = malloc((digits + 1) * sizeof(char))))
-		logwrite("malloc() failed", "Returned NULL pointer", LOG_ERROR, "dwmblocks-kernel");
-
-	snprintf(ret, digits + 1, "%u", num);
-	return ret;
-}
-
 static void
-execbutton(const unsigned int aur, const unsigned int pm)
+execbutton(unsigned int  *aur, unsigned int *pm)
 {
 	char *env;
-	char *body = NULL;
 	
 	if (!(env = getenv("BLOCK_BUTTON")))
 		return;
 
 	switch (atoi(env)) {
 	case 1:
-		strapp(&body, "󰏖 Pacman Updates: ");
-		strapp(&body, uitoa(pm));
-		strapp(&body, "\n AUR Updates: ");
-		strapp(&body, uitoa(aur));
+	{
+		char *body = NULL;
+		NotifyNotification *n = NULL;
 
-		notify("Packages", body, "tux", NOTIFY_URGENCY_NORMAL, 1);
+		n = newnotify("Packages", "Getting packages upgrade info..", "tux", NOTIFY_URGENCY_NORMAL, 1);
+
+		*aur = getupdates(aur_updates_cmd);
+		*pm  = getupdates(pm_updates_cmd);
+
+		strapp(&body, "󰏖 Pacman Updates: ");
+		strapp(&body, uitoa(*pm));
+		strapp(&body, "\n AUR Updates: ");
+		strapp(&body, uitoa(*aur));
+
+		updatenotify(n, "Packages", body, "tux", NOTIFY_URGENCY_NORMAL, 0, 1);
 		free(body);
+		freenotify(n);
 		break;
+	}
 
 	case 3:
-		forkexecv(updatecmdpath, (char**) updatecmdargs, "dwmblocks-kernel");
+		forkexecvp((char**) update_cmd_args, "dwmblocks-kernel");
 		break;
 
 	default:
@@ -86,13 +74,16 @@ main(void)
 {
 	struct utsname buf;
 	char*          release;
-	unsigned int   aur = getupdates(aurupdatescmd);
-	unsigned int   pm = getupdates(pmupdatescmd);
+	unsigned int   aur = 0;
+	unsigned int   pm  = 0;
 
-	execbutton(aur, pm);
+	execbutton(&aur, &pm);
+
+	aur = aur == 0 ? getupdates(aur_updates_cmd) : aur;
+	pm  = pm == 0  ? getupdates(pm_updates_cmd)  : pm;
 
 	if (uname(&buf))
-		logwrite("Failed in allocatting utsname struct", NULL, LOG_ERROR, "dwmblocks-kernel");
+		logwrite("Failed in allocatting utsname struct", NULL, LOG_FATAL, "dwmblocks-kernel");
 
 	release = strtok(buf.release, "-");
 
