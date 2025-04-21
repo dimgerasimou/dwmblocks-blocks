@@ -7,18 +7,20 @@
 #include "../include/colorscheme.h"
 #include "../include/common.h"
 
+#define DATE_C
+
+#include "../include/config.h"
+
 #define BUFFER_SIZE 64
 
-const char *MONTHS[] = {"January",    "February", "March",    "April",
-                        "May",        "June",     "July",     "August",
-                        "Semptember", "October",  "November", "December"};
+const char *months_string[] = {"January",    "February", "March",    "April",
+                               "May",        "June",     "July",     "August",
+                               "Semptember", "October",  "November", "December"};
 
-const int   DAYS_IN_MONTH[] = {31, 0, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
-const char *CAL_PATH[]      = {"usr", "bin", "firefox", NULL};
-const char *CAL_ARGS[]      = {"firefox", "--new-window", "https://calendar.google.com", NULL};
+const int  days_in_month[] = {31, 0, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
 
 static int
-get_first_day(int mday, int wday)
+getfirstday(int mday, int wday)
 {
 	while (mday > 7)
 		mday -= 7;
@@ -38,10 +40,10 @@ get_first_day(int mday, int wday)
 }
 
 static int
-get_month_days(const int m, const int y)
+getmonthdays(const int m, const int y)
 {
 	if (m != 1)
-		return DAYS_IN_MONTH[m];
+		return days_in_month[m];
 	if ((y % 4 == 0 && y % 100 != 0) || y % 400 == 0)
 		return 29;
 
@@ -49,7 +51,7 @@ get_month_days(const int m, const int y)
 }
 
 static char*
-get_calendar(const int mday, const int wday, const int m, const int y)
+getcalendar(const int mday, const int wday, const int m, const int y)
 {
 	char buf[BUFFER_SIZE];
 	char *ret     = NULL;
@@ -57,8 +59,8 @@ get_calendar(const int mday, const int wday, const int m, const int y)
 	int  daysm    = 0;
 	int  sn_check = 0;
 
-	fday  = get_first_day(mday, wday);
-	daysm = get_month_days(m, y);
+	fday  = getfirstday(mday, wday);
+	daysm = getmonthdays(m, y);
 	ret   = strdup("Mo Tu We Th Fr <span color='#F38BA8'>Sa Su</span>\n");
 
 	for (int i = 0; i < fday; i++)
@@ -93,15 +95,15 @@ get_calendar(const int mday, const int wday, const int m, const int y)
 }
 
 static char*
-get_summary(const int m, const int y)
+getsummary(const int m, const int y)
 {
 	char buf[BUFFER_SIZE];
 	int  size     = 0;
 	int  sn_check = 0;
 
-	size = (15 + strlen(MONTHS[m])) / 2;
+	size = (15 + strlen(months_string[m])) / 2;
 
-	sn_check = snprintf(buf, sizeof(buf), "%*s %d", size, MONTHS[m], y);
+	sn_check = snprintf(buf, sizeof(buf), "%*s %d", size, months_string[m], y);
 
 	if (sn_check > (int) sizeof(buf) - 1) {
 		logwrite("snprintf() buffer overflow", NULL, LOG_ERROR, "dwmblocks-date");
@@ -112,7 +114,7 @@ get_summary(const int m, const int y)
 }
 
 static void
-print_calendar(void)
+printcalendar(void)
 {
 	struct tm *lt   = NULL;
 	char      *body = NULL;
@@ -122,8 +124,8 @@ print_calendar(void)
 	ct = time(NULL);
 	lt = localtime(&ct);
 
-	body = get_calendar(lt->tm_mday, lt->tm_wday, lt->tm_mon, lt->tm_year + 1900);
-	sum  = get_summary(lt->tm_mon, lt->tm_year + 1900);
+	body = getcalendar(lt->tm_mday, lt->tm_wday, lt->tm_mon, lt->tm_year + 1900);
+	sum  = getsummary(lt->tm_mon, lt->tm_year + 1900);
 
 	if (!body || !sum) {
 		if (body)
@@ -140,7 +142,7 @@ print_calendar(void)
 }
 
 static void
-exec_block_button(void)
+execblockbutton(void)
 {
 	char *env = NULL;
 
@@ -149,15 +151,15 @@ exec_block_button(void)
 
 	switch (atoi(env)) {
 	case 1:
-		print_calendar();
+		printcalendar();
 		return;
 
 	case 3:
 	{
 		char *path;
 
-		path = get_path((char**) CAL_PATH, 1);
-		forkexecv(path, (char **) CAL_ARGS, "dwmblocks-date");
+		path = get_path((char**) gui_calender_path, 1);
+		forkexecv(path, (char **) gui_calendar_args, "dwmblocks-date");
 
 		free(path);
 		return;
@@ -174,7 +176,7 @@ main()
 	struct tm *lt = NULL;
 	time_t     ct = 0;
 
-	exec_block_button();
+	execblockbutton();
 	
 	ct = time(NULL);
 	lt = localtime(&ct);

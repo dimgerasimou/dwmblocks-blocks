@@ -70,13 +70,13 @@ forkexecv(const char *path, char **args, const char *argv0)
 {
 	switch (fork()) {
 	case -1:
-		logwrite("fork() failed", NULL, LOG_ERROR, argv0);
+		logwrite("fork() failed", NULL, LOG_FATAL, argv0);
 		break;
 
 	case 0:
 		setsid();
 		execv(path, args);
-		logwrite("execv() failed for", "args[0]", LOG_ERROR, argv0);
+		logwrite("execv() failed for", args[0], LOG_FATAL, argv0);
 		break;
 
 	default:

@@ -24,13 +24,13 @@ INSTALL_TO  := $(addprefix $(PREFIX)/, $(BLOCKS))
 all: $(BINARIES)
 
 # Compile binaries by linking object files
-$(BIN_DIR)/%: $(BUILD_DIR)/%.o $(COMMON_OBJ) $(INCLUDE)/colorscheme.h
+$(BIN_DIR)/%: $(BUILD_DIR)/%.o $(COMMON_OBJ) $(INCLUDE)/colorscheme.h $(INCLUDE)/config.h
 	@mkdir -p $(BIN_DIR)
 	@echo "Linking $@"
 	@$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS)
 
 # Compile object files from block sources
-$(BUILD_DIR)/%.o: $(SRC_DIR)/%.c $(INCLUDE)/colorscheme.h
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.c $(INCLUDE)/colorscheme.h $(INCLUDE)/config.h
 	@mkdir -p $(BUILD_DIR)
 	@echo "Compiling $<"
 	@$(CC) -c $< -o $@ $(CFLAGS) $(LDFLAGS)
