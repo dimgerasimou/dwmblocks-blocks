@@ -1,20 +1,22 @@
 # dwmblocks-blocks
 
-This repository contains blocks, that can be used by a status line, e.g. dwmblocks. These blocks
-are clickable for dwm, and support color (for dwm patched with status 2d). They are written using C,
-mostly using system libraries. The complete library usage is WIP as well as customization for a wider
-range of devices and drivers.
+This repository contains blocks, executables that display a single part of a status line. These can be used by a status line application, e.g. [dwmblocks](https://github.com/dimgerasimou/dwmasyncblocks).
 
-A nerd font must definetly be used in the window manager to render properly, as well as ttf-font-awesome.
+If the window manager and status application are configured correctly, the blocks support colour and are clickable. For dwm, it needs to be patched with [statuscmd](https://dwm.suckless.org/patches/statuscmd/) and [status2d](https://dwm.suckless.org/patches/status2d/)
 
-Here is a list of the blocks, with a summary of its function and dependencies:
+They are written using C, mostly using system libraries.
+
+A nerd font must definetly be used in the window manager to render the icons properly, as well as Font Awesome.
+
+Here is a list of the blocks, with a summary of their functions and dependencies:
 
 ## battery
 
 ### Usage
 
-Reports the battery level, status and optionally the power manager's status. Reads the battery info
-from `/sys/class/power_supply/BAT@`. Check if the correct path is set in the `config.h` file.
+Reports the battery level, status and optionally the power manager's status. Reads the battery info from `/sys/class/power_supply/BAT@`. 
+
+Check if the correct path is set in the `config.h` file.
 
 ### Dependencies
 
@@ -25,8 +27,7 @@ Optional:
 
 ### Usage
 
-Returns the blueooth state, can toggle the bluetooth state and can open a TUI interface with the
-bluetooth settings.
+Returns the blueooth state, can toggle the bluetooth state and optionally open a TUI interface with the bluetooth settings.
 
 ### Dependencies
 
@@ -39,7 +40,7 @@ Optional:
 
 ### Usage
 
-Returns current day, can send via notify a cute monthly calendar or optionaly launch a calendar through
+Returns current day, notify a cute monthly calendar and optionaly launch a calendar through
 a browser.
 
 ### Dependencies
@@ -51,8 +52,7 @@ Optional:
 
 ### Usage
 
-Returns the state, can notify the properties of the ethernet and wifi adapter. Can toggle wifi state,
-spawn a utility to connect to wifi, or open a TUI utility.
+Returns the state, notify the properties of the ethernet and wifi adapters. Can toggle wifi state, optionally spawn a utility to connect to wifi and open a TUI utility.
 
 ### Dependencies
 
@@ -66,7 +66,7 @@ Optional:
 
 ### Usage
 
-Returns current kernel version and the number of packages to be updated, notifies more analiticly about their source, macman or aur and can perform a system upgrade.
+Returns current kernel version and the number of packages to be updated, notifies the number of aur packages or pacman packages to be upgraded and can perform a system upgrade.
 
 ### Dependencies
 
@@ -80,7 +80,7 @@ Optional:
 
 ### Usage
 
-Returns the current keyboard layout and optionally switch languages on click.
+Returns the current keyboard layout and optionally switches language on click.
 
 ### Dependencies
 
@@ -94,7 +94,7 @@ Optional:
 
 ### Usage
 
-Returns the memory that is currently used. Can optionally run a task manager.
+Returns the memory that is currently used and optionally runs a task manager.
 
 ### Dependencies
 
@@ -105,14 +105,14 @@ Optionally:
 
 ### Usage
 
-Prints a power menu, that can: shutdown, restart, lock, restart the statusbar and optionally
+Prints a power menu that can: shutdown, restart, lock, restart the statusbar and optionally
 pause the clipboard, delete the clipboard contents and switch the power mode from optimus manager.
 
 ### Dependencies
 
 - xmenu
-- [dwmblocks](https://github.com/dwmasyncblocks)
-- A lock screen utility (default: [slock](https://github.com/slock))
+- [dwmblocks](https://github.com/dimgerasimou/dwmasyncblocks)
+- A lock screen utility (default: [slock](https://github.com/dimgerasimou/slock))
 
 Optional:
 - clipmenu
@@ -132,7 +132,7 @@ No dependecies.
 
 ### Usage
 
-Returns current volume and state, notifies it along the default source's and sink's info. Can optinally launch an equalizer application and can change volume or mute.
+Returns current volume and state, notifies it along the default source's and sink's info. Can optionally launch a equalizer application and can change the volume or mute the volume.
 
 ### Dependencies
 
