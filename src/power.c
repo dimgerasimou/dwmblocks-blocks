@@ -215,7 +215,7 @@ int
 main(void)
 {
 	execbutton();
-	printf(CLR_1 BG_1" "NRM"\n");
+	printf(CLR_1 BG_1"  \n");
 
 	return 0;
 }

@@ -12,6 +12,12 @@ A nerd font must definetly be used in the window manager to render the icons pro
 
 This project is licensed under the GNU General Public License v3.0. See the [LICENSE](./LICENSE) file for details.
 
+## Colorscheme
+
+A file colorscheme.h must be defined to be able to compile. There are some preset colorschemes given.
+
+If no colorscheme.h file is present at compile time, it will attempt to create one, with colors from the defined terminal colors in XResources.
+
 ## Blocks
 
 Here is a list of the blocks, with a summary of their functions and dependencies:

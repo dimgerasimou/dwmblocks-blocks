@@ -276,6 +276,6 @@ main(void)
 
 	freeaudioinfo(&a);
 
-	printf(CLR_2"%s"NRM"\n", s);
+	printf(CLR_2" %s\n", s);
 	return 0;
 }

@@ -90,9 +90,9 @@ main(void)
 	release = strtok(buf.release, "-");
 
 	if ((aur + pm) > 0)
-		printf(CLR_12"  󰏖 %d  %s"NRM"\n", aur + pm, release);
+		printf(CLR_12" 󰏖 %d  %s\n", aur + pm, release);
 	else
-		printf(CLR_12"   %s"NRM"\n", release);
+		printf(CLR_12"  %s\n", release);
 
 	return 0;
 }

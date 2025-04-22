@@ -13,7 +13,7 @@
 #include "../include/config.h"
 
 const char *notif_icons[]  = {"x", "tdenetworkmanager", "wifi-radar"};
-const char *status_icons[] = {CLR_9"󰤮  "NRM, CLR_6"  "NRM, CLR_6"󰤯  "NRM, CLR_6"󰤟  "NRM, CLR_6"󰤢  "NRM, CLR_6"󰤥  "NRM, CLR_6"󰤨  "NRM, CLR_9"󰤫  "NRM};
+const char *status_icons[] = {CLR_9"󰤮 ", CLR_6" ", CLR_6"󰤯 ", CLR_6"󰤟 ", CLR_6"󰤢 ", CLR_6"󰤥 ", CLR_6"󰤨 ", CLR_9"󰤫 "};
 const char *menu_string    = "󱛄 Toggle Wifi\t0\n󱛃 Connect to wifi\t1\n󱚾 TUI options\t2";
 
 /* structs */
@@ -281,7 +281,7 @@ main(void)
 		g_object_unref(client);
 	}
 
-	printf(" "BG_1" %s\n", status_icons[state]);
+	printf(BG_1" %s\n", status_icons[state]);
 
 	return 0;
 }

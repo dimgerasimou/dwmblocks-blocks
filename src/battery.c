@@ -170,7 +170,7 @@ main(void)
 		return EXIT_SUCCESS;
 	}
 
-	printf(BG_1"%s"NRM"\n", battery_icon_list[lround(capacity / 25.0)]);
+	printf(BG_1" %s\n", battery_icon_list[lround(capacity / 25.0)]);
 
 	free(status);
 	return 0;
