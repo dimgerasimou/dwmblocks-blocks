@@ -1,3 +1,5 @@
+/* See LICENSE file for copyright and license details. */
+
 #include <errno.h>
 #include <libnotify/notification.h>
 #include <stdio.h>

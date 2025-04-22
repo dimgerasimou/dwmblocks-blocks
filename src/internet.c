@@ -1,3 +1,5 @@
+/* See LICENSE file for copyright and license details. */
+
 #include <NetworkManager.h>
 #include <stdio.h>
 #include <stdlib.h>

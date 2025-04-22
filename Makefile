@@ -1,3 +1,5 @@
+# See LICENSE file for copyright and license details.
+
 PREFIX      := $(HOME)/.local/bin/dwmblocks
 CC          := cc
 CFLAGS      := -Wall -Wextra -Werror -Wno-deprecated-declarations -Os
