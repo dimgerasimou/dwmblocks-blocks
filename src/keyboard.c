@@ -7,7 +7,7 @@
 #define KEYBOARD_C
 
 #include "../include/colorscheme.h"
-#include "../include/common.h"
+#include "../include/utils.h"
 #include "../include/config.h"
 
 static void
@@ -35,7 +35,7 @@ execbutton(void)
 	switch(atoi(env)) {
 	case 1:
 	{
-		char *path = get_path((char**) path_language_switch, 1);
+		char *path = getpath((char**) path_language_switch);
 
 		unsetenv("BLOCK_BUTTON");
 		forkexecv(path, (char**) args_language_switch, "dwmblocks-keyboard");

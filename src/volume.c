@@ -7,7 +7,7 @@
 #define VOLUME_C
 
 #include "../include/colorscheme.h"
-#include "../include/common.h"
+#include "../include/utils.h"
 #include "../include/config.h"
 
 typedef struct {
@@ -73,19 +73,19 @@ execbutton(AudioInfo **a)
 		break;
 
 	case 3:
-		path = get_path((char**) path_volume_control, 1);
+		path = getpath((char**) path_volume_control);
 		forkexecv(path, (char**) args_volume_mute, "dwmblocks-volume");
 		free(path);
 		break;
 
 	case 4:
-		path = get_path((char**) path_volume_control, 1);
+		path = getpath((char**) path_volume_control);
 		forkexecv(path, (char**) args_volume_increase, "dwmblocks-volume");
 		free(path);
 		break;
 
 	case 5:
-		path = get_path((char**) path_volume_control, 1);
+		path = getpath((char**) path_volume_control);
 		forkexecv(path, (char**) args_volume_decrase, "dwmblocks-volume");
 		free(path);
 		break;

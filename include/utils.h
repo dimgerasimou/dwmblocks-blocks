@@ -1,5 +1,5 @@
-#ifndef COMMON_H
-#define COMMON_H
+#ifndef UTILS_H
+#define UTILS_H
 
 #include <libnotify/notification.h>
 
@@ -26,21 +26,21 @@ void forkexecv(const char *path, char **args, const char *argv0);
  * If is_file is true, then it doesn't add the last backslash.
  * Works with environment variables too, in the bas format.
  */
-char* get_path(char **path_array, const int is_file);
+char* getpath(char **path_array);
 
 /*
  * Returns the pid of the process that it's cmdline argument
  * matches the process string. Negative pids are the corresponding
  * error values. (If process exists more than one time, it fails)
  */
-pid_t get_pid_of(const char *process, const char *argv0);
+pid_t getpidof(const char *process, const char *argv0);
 
 /*
  * Returns the output of xmenu, after `menu` string is passed as the
  * argument. Negative values are the corresponding error values.
  * Parses only single integer xmenu outputs.
  */
-int get_xmenu_option(const char *menu, const char *argv0);
+int getxmenuopt(const char *menu, const char *argv0);
 
 /*
  * Writes a log to the file defined by log_path with a timestamp
@@ -88,4 +88,4 @@ int trimtonewl(const char *string);
  */
 char* uitoa(const unsigned int num);
 
-#endif /* COMMON_H */
+#endif /* UTILS_H */

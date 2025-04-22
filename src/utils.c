@@ -10,14 +10,16 @@
 #include <sys/wait.h>
 #include <stdint.h>
 
-#include "../include/common.h"
+#define UTILS_C
 
-const char *LOG_PATH[] = {"$HOME", "window-manager.log", NULL};
+#include "../include/utils.h"
+#include "../include/config.h"
+
 
 /* file specific functions */
 
 static char*
-format_summary(const char *summary, const char *body)
+formatsummary(const char *summary, const char *body)
 {
 	unsigned int count = 0;
 	unsigned int max_count = 0;
@@ -45,7 +47,7 @@ format_summary(const char *summary, const char *body)
 }
 
 static int
-str_to_uint64(const char *input, uint64_t *output)
+strtouint64(const char *input, uint64_t *output)
 {
 	char     *endptr;
 	uint64_t val;
@@ -105,11 +107,10 @@ forkexecvp(char **args, const char *argv0)
 }
 
 char*
-get_path(char **path_array, const int is_file)
+getpath(char **path_array)
 {
 	char path[PATH_MAX];
 	char name[NAME_MAX];
-	char *ret;
 
 	path[0] = '\0';
 
@@ -130,27 +131,19 @@ get_path(char **path_array, const int is_file)
 			strcat(path, name);
 		}
 	}
-	
-	if (!is_file && path[0] != '\0') {
-		char *ptr = strchr(path, '\0');
-		*ptr = '/';
-		*(++ptr) = '\0';
-	}
 
-	ret = (char*) malloc((strlen(path)+1) * sizeof(char));
-	strcpy(ret, path);
-	return ret;
+	return strdup(path);
 }
 
 pid_t
-get_pid_of(const char *process, const char *argv0)
+getpidof(const char *process, const char *argv0)
 {
-	DIR           *dir;
-	pid_t         ret;
-	struct dirent *ent;
-	FILE          *fp;
 	char          buffer[PATH_MAX];
+	struct dirent *ent;
+	DIR           *dir;
+	FILE          *fp;
 	uint64_t      pid;
+	pid_t         ret;
 
 	dir = opendir("/proc");
 	ret = 0;
@@ -162,7 +155,7 @@ get_pid_of(const char *process, const char *argv0)
 	}
 
 	while ((ent = readdir(dir)) && ret >= 0) {
-		if (str_to_uint64(ent->d_name, &pid) < 0)
+		if (strtouint64(ent->d_name, &pid) < 0)
 			continue;
 
 		snprintf(buffer, sizeof(buffer), "/proc/%s/cmdline", ent->d_name);
@@ -190,7 +183,7 @@ get_pid_of(const char *process, const char *argv0)
 }
 
 int
-get_xmenu_option(const char *menu, const char *argv0)
+getxmenuopt(const char *menu, const char *argv0)
 {
 	int  option;
 	int  writepipe[2];
@@ -244,7 +237,7 @@ get_xmenu_option(const char *menu, const char *argv0)
 pid_t
 killstr(const char *procname, const int signo, const char *argv0)
 {
-	pid_t pID = get_pid_of(procname, argv0);
+	pid_t pID = getpidof(procname, argv0);
 
 	if (pID > 0) {
 		kill(pID, signo);
@@ -266,7 +259,7 @@ logwrite(const char *message, const char *name, const log_level level, const cha
 	if (!message)
 		return;
 
-	path = get_path((char**) LOG_PATH, 1);
+	path = getpath((char**) path_log);
 	fp = fopen(path, "a");
 
 	if (!fp) {
@@ -316,42 +309,13 @@ logwrite(const char *message, const char *name, const log_level level, const cha
 }
 
 void
-log_string(const char *string, const char *argv0)
-{
-	if (!string)
-		return;
-
-	FILE      *fp;
-	time_t    rawtime;
-	struct tm *timeinfo;
-	char      *path;
-
-	path = get_path((char**) LOG_PATH, 1);
-
-	if (!(fp = fopen(path, "a"))) {
-		fprintf(stderr, "Failed to open in append mode, path: %s - %s\n", path, strerror(errno));
-		exit(errno);
-	}
-
-	time(&rawtime);
-	timeinfo = localtime(&rawtime);
-
-	fprintf(fp, "%d-%02d-%02d %02d:%02d:%02d %s\n%s\n\n", timeinfo->tm_year+1900,
-		timeinfo->tm_mon+1, timeinfo->tm_mday, timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec, argv0, string);
-
-	fclose(fp);
-
-	free(path);
-}
-
-void
-notify(const char *summary, const char *body, const char *icon, NotifyUrgency urgency, const int form_sum)
+notify(const char *summary, const char *body, const char *icon, NotifyUrgency urgency, const int formsum)
 {
 	char               *sum;
 	NotifyNotification *notification;
 
-	if (form_sum) {
-		sum = format_summary(summary, body);
+	if (formsum) {
+		sum = formatsummary(summary, body);
 	} else {
 		sum = malloc((strlen(summary) + 1) * sizeof(char));
 		strcpy(sum, summary);
@@ -369,13 +333,13 @@ notify(const char *summary, const char *body, const char *icon, NotifyUrgency ur
 }
 
 NotifyNotification*
-newnotify(const char *summary, const char *body, const char *icon, NotifyUrgency urgency, const int form_sum)
+newnotify(const char *summary, const char *body, const char *icon, NotifyUrgency urgency, const int formsum)
 {
 	char               *sum;
 	NotifyNotification *notification;
 
-	if (form_sum) {
-		sum = format_summary(summary, body);
+	if (formsum) {
+		sum = formatsummary(summary, body);
 	} else {
 		sum = malloc((strlen(summary) + 1) * sizeof(char));
 		strcpy(sum, summary);
@@ -392,12 +356,12 @@ newnotify(const char *summary, const char *body, const char *icon, NotifyUrgency
 }
 
 void
-updatenotify(NotifyNotification *notification, const char *summary, const char *body, const char *icon, NotifyUrgency urgency, const int timeout, const int form_sum)
+updatenotify(NotifyNotification *notification, const char *summary, const char *body, const char *icon, NotifyUrgency urgency, const int timeout, const int formsum)
 {
 	char *sum;
 
-	if (form_sum) {
-		sum = format_summary(summary, body);
+	if (formsum) {
+		sum = formatsummary(summary, body);
 	} else {
 		sum = malloc((strlen(summary) + 1) * sizeof(char));
 		strcpy(sum, summary);

@@ -8,7 +8,7 @@
 #define BUFFER_SIZE 64
 
 #include "../include/colorscheme.h"
-#include "../include/common.h"
+#include "../include/utils.h"
 #include "../include/config.h"
 
 const char *months_string[] = {"January",    "February", "March",    "April",

@@ -7,7 +7,7 @@
 
 #include "nm-dbus-interface.h"
 #include "../include/colorscheme.h"
-#include "../include/common.h"
+#include "../include/utils.h"
 #include "../include/config.h"
 
 const char *notif_icons[]  = {"x", "tdenetworkmanager", "wifi-radar"};
@@ -85,7 +85,7 @@ execbutton(NMClient *c, int icind)
 		break;
 
 	case 3:
-		switch(get_xmenu_option(menu_string, "dwmblocks-internet")) {
+		switch(getxmenuopt(menu_string, "dwmblocks-internet")) {
 		case 0:
 			togglewifi(c);
 			break;
@@ -94,7 +94,7 @@ execbutton(NMClient *c, int icind)
 		{
 			char *path;
 			
-			path = get_path((char**) path_wifi_connect, 1);
+			path = getpath((char**) path_wifi_connect);
 			forkexecv(path, (char**) args_wifi_connect, "dwmblocks-internet");
 
 			free(path);

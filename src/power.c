@@ -10,7 +10,7 @@
 #define POWER_C
 
 #include "../include/colorscheme.h"
-#include "../include/common.h"
+#include "../include/utils.h"
 #include "../include/config.h"
 
 /* menu prompts */
@@ -33,10 +33,10 @@ clippause(const unsigned int seconds)
 
 	case 0:
 		setsid();
-		pid_t pid = get_pid_of("clipmenud", "dmblocks-power");
+		pid_t pid = getpidof("clipmenud", "dmblocks-power");
 
 		if (pid < 0) {
-			pid = get_pid_of("bash\0/usr/bin/clipmenud", "dmblocks-power");
+			pid = getpidof("bash\0/usr/bin/clipmenud", "dmblocks-power");
 			if (pid < 0) {
 				errno = ESRCH;
 				logwrite("Couldn't get pID of", "clipmenud", LOG_FATAL, "dwmblocks-power");
@@ -61,7 +61,7 @@ clippause(const unsigned int seconds)
 static void
 clipmenu(void)
 {
-	switch (get_xmenu_option(menu_clipboard, "dwmblocks-power")) {
+	switch (getxmenuopt(menu_clipboard, "dwmblocks-power")) {
 	case 0:
 		clippause(60);
 		break;
@@ -84,19 +84,19 @@ const char *args_optimus_nvidia[]     = {"optimus-manager", "--no-confirm", "--s
 static void
 optimusmenu(void)
 {
-	switch (get_xmenu_option(menu_optimus, "dwmblocks-power")) {
+	switch (getxmenuopt(menu_optimus, "dwmblocks-power")) {
 	case 0:
-		if (get_xmenu_option(menu_yes_no, "dwmblocks-power") == 1)
+		if (getxmenuopt(menu_yes_no, "dwmblocks-power") == 1)
 			forkexecvp((char**) args_optimus_integrated, "dwmblocks-power");
 		break;
 
 	case 1:
-		if (get_xmenu_option(menu_yes_no, "dwmblocks-power") == 1)
+		if (getxmenuopt(menu_yes_no, "dwmblocks-power") == 1)
 			forkexecvp((char**) args_optimus_hybrid, "dwmblocks-power");
 		break;
 
 	case 2:
-		if (get_xmenu_option(menu_yes_no, "dwmblocks-power") == 1)
+		if (getxmenuopt(menu_yes_no, "dwmblocks-power") == 1)
 			forkexecvp((char**) args_optimus_nvidia, "dwmblocks-power");
 		break;
 
@@ -112,10 +112,10 @@ restartdwmblocks(void)
 	char *path = NULL;
 	int pid = 0;
 
-	path = get_path((char**) path_dwmblocks, 1);
+	path = getpath((char**) path_dwmblocks);
 
-	if ((pid = get_pid_of("dwmblocks", "dwmblocks-power")) == -ENOENT) {
-		pid = get_pid_of(path, "dwmblocks-power");
+	if ((pid = getpidof("dwmblocks", "dwmblocks-power")) == -ENOENT) {
+		pid = getpidof(path, "dwmblocks-power");
 	}
 
 	if (pid <= 0)
@@ -147,20 +147,20 @@ mainmenu(void)
 		strapp(&menu, menu_power_clipboard);
 	#endif
 
-	switch (get_xmenu_option(menu, "dwmblocks-power")) {
+	switch (getxmenuopt(menu, "dwmblocks-power")) {
 	case 0:
-		if (get_xmenu_option(menu_yes_no, "dwmblocks-power") == 1)
+		if (getxmenuopt(menu_yes_no, "dwmblocks-power") == 1)
 			execl("/bin/shutdown", "shutdown", "now", NULL);
 		break;
 
 	case 1:
-		if (get_xmenu_option(menu_yes_no, "dwmblocks-power") == 1)
+		if (getxmenuopt(menu_yes_no, "dwmblocks-power") == 1)
 			execl("/bin/shutdown", "shutdown", "now", "-r", NULL);
 		break;
 
 	case 2:
-		if (get_xmenu_option(menu_yes_no, "dwmblocks-power") == 1) {
-			int pid = get_pid_of("/usr/local/bin/dwm", "dwmblocks-power");
+		if (getxmenuopt(menu_yes_no, "dwmblocks-power") == 1) {
+			int pid = getpidof("/usr/local/bin/dwm", "dwmblocks-power");
 			if (pid > 0) {
 				kill(pid, SIGTERM);
 			} else {

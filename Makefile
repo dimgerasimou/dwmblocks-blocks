@@ -8,12 +8,12 @@ SRC_DIR     := src
 BUILD_DIR   := build
 BIN_DIR     := bin
 INCLUDE     := include
-COMMON_SRC  := $(SRC_DIR)/common.c
+UTILS_SRC  := $(SRC_DIR)/utils.c
 BLOCKS      := time keyboard battery date kernel bluetooth internet memory power volume
 
 BLOCK_SRCS  := $(addprefix $(SRC_DIR)/, $(addsuffix .c, $(BLOCKS)))
 BLOCK_OBJS  := $(addprefix $(BUILD_DIR)/, $(addsuffix .o, $(BLOCKS)))
-COMMON_OBJ  := $(BUILD_DIR)/common.o
+UTILS_OBJ  := $(BUILD_DIR)/utils.o
 
 BINARIES    := $(addprefix $(BIN_DIR)/, $(BLOCKS))
 INSTALL_TO  := $(addprefix $(PREFIX)/, $(BLOCKS))
@@ -24,7 +24,7 @@ INSTALL_TO  := $(addprefix $(PREFIX)/, $(BLOCKS))
 all: $(BINARIES)
 
 # Compile binaries by linking object files
-$(BIN_DIR)/%: $(BUILD_DIR)/%.o $(COMMON_OBJ) $(INCLUDE)/colorscheme.h $(INCLUDE)/config.h
+$(BIN_DIR)/%: $(BUILD_DIR)/%.o $(UTILS_OBJ) $(INCLUDE)/colorscheme.h $(INCLUDE)/config.h
 	@mkdir -p $(BIN_DIR)
 	@echo "Linking $@"
 	@$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS)
@@ -36,9 +36,9 @@ $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c $(INCLUDE)/colorscheme.h $(INCLUDE)/config.h
 	@$(CC) -c $< -o $@ $(CFLAGS) $(LDFLAGS)
 
 # Compile object file for shared code
-$(COMMON_OBJ): $(COMMON_SRC)
+$(UTILS_OBJ): $(UTILS_SRC)
 	@mkdir -p $(BUILD_DIR)
-	@echo "Compiling common.c"
+	@echo "Compiling utils.c"
 	@$(CC) -c $< -o $@ $(CFLAGS) $(LDFLAGS)
 
 # Generate colorscheme.h

@@ -1,6 +1,10 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+#ifdef UTILS_C
+const char *path_log[] = {"$HOME", "window-manager.log", NULL};
+#endif
+
 #ifdef BATTERY_C
 #define POWER_MANAGEMENT
 const char path_battery_kernel[] = "/sys/class/power_supply/BAT1";

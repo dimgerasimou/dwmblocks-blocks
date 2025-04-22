@@ -6,7 +6,7 @@
 #define MEMORY_C
 
 #include "../include/colorscheme.h"
-#include "../include/common.h"
+#include "../include/utils.h"
 #include "../include/config.h"
 
 
