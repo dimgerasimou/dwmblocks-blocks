@@ -1,6 +1,7 @@
 /* See LICENSE file for copyright and license details. */
 
 #include <errno.h>
+#include <fcntl.h>
 #include <libnotify/notify.h>
 #include <linux/limits.h>
 #include <signal.h>
@@ -88,6 +89,41 @@ forkexecv(const char *path, char **args, const char *argv0)
 		break;
 	}
 }
+
+void
+forkexecvs(const char *path, char **args, const char *argv0)
+{
+	switch (fork()) {
+	case -1:
+		logwrite("fork() failed", NULL, LOG_FATAL, argv0);
+		break;
+
+	case 0:
+	{
+		int fd;
+
+		if (!(fd = open("/dev/null", O_WRONLY)))
+			logwrite("Failed to open",  "'/dev/null/'", LOG_FATAL, argv0);
+
+		if (dup2(fd, STDOUT_FILENO) == -1)
+			logwrite("dup2() failed for", "STDOUT", LOG_FATAL, argv0);
+
+		if (dup2(fd, STDERR_FILENO) == -1)
+			logwrite("dup2() failed for", "STDERR", LOG_FATAL, argv0);
+
+		close(fd);
+
+		setsid();
+		execv(path, args);
+		logwrite("execv() failed for", args[0], LOG_FATAL, argv0);
+		break;
+	}
+
+	default:
+		break;
+	}
+}
+
 
 void
 forkexecvp(char **args, const char *argv0)

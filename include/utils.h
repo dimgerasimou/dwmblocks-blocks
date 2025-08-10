@@ -19,6 +19,12 @@ typedef enum {
 void forkexecv(const char *path, char **args, const char *argv0);
 
 /*
+ * Forks and executes given command silently, redirecting
+ * stdout and stderr to '/dev/null'.
+ */
+void forkexecvs(const char *path, char **args, const char *argv0);
+
+/*
  * Forks and executes given command from bin directory.
  */
  void forkexecvp(char **args, const char *argv0);

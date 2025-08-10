@@ -14,6 +14,6 @@ main(void)
 	ct = time(NULL);
 	lt = localtime(&ct);
 
-	printf(CLR_7"  %.2d:%.2d\n", lt->tm_hour, lt->tm_min);
+	printf(CLR_7" %.2d:%.2d\n", lt->tm_hour, lt->tm_min);
 	return 0;
 }

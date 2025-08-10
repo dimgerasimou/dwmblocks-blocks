@@ -176,7 +176,7 @@ propnotify(AudioInfo **a)
 	char temp[64];
 	
 	if (a[0]->done == 1) {
-		snprintf(temp, sizeof(temp), "  Volume: %3d%%, Muted: %s\n",
+		snprintf(temp, sizeof(temp), " Volume: %3d%%, Muted: %s\n",
 		         a[0]->volume, a[0]->mute ? "Yes" : "No");
 	} else {
 		snprintf(temp, sizeof(temp), "No audio sink detected.\n");
@@ -184,7 +184,7 @@ propnotify(AudioInfo **a)
 	strapp(&buffer, temp);
 
 	if (a[1]->done == 1) {
-		snprintf(temp, sizeof(temp), "  Volume: %3d%%, Muted: %s\n",
+		snprintf(temp, sizeof(temp), " Volume: %3d%%, Muted: %s\n",
 		         a[1]->volume, a[1]->mute ? "Yes" : "No");
 	} else {
 		snprintf(temp, sizeof(temp), "No audio source detected.\n");
@@ -267,7 +267,7 @@ main(void)
 	if (a[0]->mute || a[0]->done != 1) {
 		strcpy(s, " ");
 	} else if (a[0]->volume > 66) {
-		snprintf(s, sizeof(s), "  %d%%", a[0]->volume);
+		snprintf(s, sizeof(s), " %d%%", a[0]->volume);
 	} else if (a[0]->volume > 33) {
 		snprintf(s, sizeof(s), " %d%%", a[0]->volume);
 	} else {
@@ -276,6 +276,6 @@ main(void)
 
 	freeaudioinfo(&a);
 
-	printf(CLR_2" %s\n", s);
+	printf(CLR_2"%s\n", s);
 	return 0;
 }

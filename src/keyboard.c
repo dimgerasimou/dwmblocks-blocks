@@ -77,7 +77,7 @@ main(void)
 		}
 	}
 
-	printf(CLR_5"  %s\n", tok);
+	printf(CLR_5" %s\n", tok);
 
 cleanup:
 	XkbRF_FreeVarDefs(&vd);

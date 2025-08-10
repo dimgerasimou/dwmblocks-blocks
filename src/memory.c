@@ -81,6 +81,6 @@ int
 main(void)
 {
 	execbutton();
-	printf(CLR_3"  %.1lfGiB\n", ((getmemoryusage())/1024.0)/1024.0);
+	printf(CLR_3" %.1lfGiB\n", ((getmemoryusage())/1024.0)/1024.0);
 	return 0;
 }

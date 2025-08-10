@@ -202,7 +202,7 @@ main(void)
 	if (state < 0)
 		return -state;
 
-	printf(CLR_4 BG_1" %s\n", bt_icons[state]);
+	printf(CLR_4 BG_1"%s\n", bt_icons[state]);
 
 	return EXIT_SUCCESS;
 }

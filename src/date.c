@@ -174,7 +174,7 @@ main()
 	ct = time(NULL);
 	lt = localtime(&ct);
 
-	printf(CLR_1 "  %02d/%02d\n", lt->tm_mday, ++(lt->tm_mon));
+	printf(CLR_1 " %02d/%02d\n", lt->tm_mday, ++(lt->tm_mon));
 
 	return 0;
 }

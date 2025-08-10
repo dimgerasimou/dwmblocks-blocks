@@ -155,12 +155,52 @@ getstatus(void)
 	return strdup(buf);
 }
 
+
+static void
+batterymode(const unsigned int capacity)
+{
+	FILE *fp;
+	char *path = NULL;
+	
+	unsigned int prev_capacity = 0;
+	unsigned int prev_ac = 0;
+	unsigned int ac = 0;
+	
+	fp = fopen(path_tmp_file, "r");
+
+	if (fp) {
+		fscanf(fp, "%u, %u", &prev_ac, &prev_capacity);
+		fclose(fp);
+	}
+
+	strapp(&path, path_adapter_kernel);
+	strapp(&path, "/online");
+	
+	fp = fopen(path, "r");
+	if (fp) {
+		fscanf(fp, "%u", &ac);
+		fclose(fp);
+	}
+
+	free(path);
+
+	fp = fopen(path_tmp_file, "w");
+	fprintf(fp, "%u, %u\n", ac, capacity);
+	fclose(fp);
+
+	if (ac != prev_ac || (!ac && prev_capacity >= 25 && capacity < 25)) {
+		path = getpath((char**) path_power_mode);
+		forkexecvs(path, (char**) args_power_mode, "dwmblocks-battery");
+		free(path);
+	}
+}
 int
 main(void)
 {
 	char         *status   = getstatus();
 	unsigned int  capacity = getcapacity();
 
+	batterymode(capacity);
 	execbutton(capacity, status);
 
 	if(!strcmp(status, "Charging")) {
@@ -170,7 +210,7 @@ main(void)
 		return EXIT_SUCCESS;
 	}
 
-	printf(BG_1" %s\n", battery_icon_list[lround(capacity / 25.0)]);
+	printf(BG_1"%s\n", battery_icon_list[lround(capacity / 25.0)]);
 
 	free(status);
 	return 0;

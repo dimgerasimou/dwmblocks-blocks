@@ -38,7 +38,7 @@ ResourcePref resources[] = {
 	{ "color13",     termcols[13] },
 	{ "color14",     termcols[14] },
 	{ "color15",     termcols[15] },
-	{ "background0", bgcols[1] },
+	{ "background0", bgcols[0] },
 	{ "background1", bgcols[1] },
 };
 

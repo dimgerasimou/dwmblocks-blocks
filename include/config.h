@@ -10,6 +10,11 @@ const char *path_log[] = {"$HOME", "window-manager.log", NULL};
 #ifdef BATTERY_C
 #define POWER_MANAGEMENT
 const char path_battery_kernel[] = "/sys/class/power_supply/BAT1";
+const char path_adapter_kernel[] = "/sys/class/power_supply/ADP1";
+const char *path_power_mode[] = {"$HOME", ".config", "dwm", "power-mode.sh", NULL};
+const char *args_power_mode[] = {"power-mode.sh", NULL};
+const char path_tmp_file[] = "/tmp/dwmblocks-battery";
+const unsigned int level_battery_critical = 25;
 #endif
 
 #ifdef BLUETOOTH_C

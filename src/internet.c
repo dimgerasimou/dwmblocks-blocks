@@ -281,7 +281,7 @@ main(void)
 		g_object_unref(client);
 	}
 
-	printf(BG_1" %s\n", status_icons[state]);
+	printf(BG_1"%s\n", status_icons[state]);
 
 	return 0;
 }
