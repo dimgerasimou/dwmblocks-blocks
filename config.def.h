@@ -117,6 +117,8 @@ const char *args_language_switch[] = { "keyboard.sh", NULL };
  * ============================================================ */
 #ifdef MEMORY_C
 
+const unsigned int show_icon = 1;
+
 /* Task manager application */
 const char *args_task_manager[] = { term_cmd, "sh", "-c", "htop", NULL };
 

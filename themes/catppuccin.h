@@ -15,6 +15,7 @@
 #define CLR_KRN_PKG "^c#F38BA8^" /* red */
 #define CLR_KRN_NRM "^c#89B4FA^" /* blue */
 #define CLR_KBD     "^c#CBA6F7^" /* magenta */
+#define CLR_MEM     "^c#F9E2AF^" /* yellow */
 
 #define CLR_0 "^c#45475A^"
 #define CLR_1 "^c#F38BA8^"
