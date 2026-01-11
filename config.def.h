@@ -40,6 +40,8 @@ const char *bt_tui_cmd[] = { term_cmd, "-e", "bluetuith", NULL };
  * ============================================================ */
 #ifdef DATE_C
 
+const unsigned int show_icon = 1;
+
 /* GUI calendar application */
 const char *args_gui_calendar[] = {
 	"zen-browser",

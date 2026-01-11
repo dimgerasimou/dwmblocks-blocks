@@ -3,14 +3,13 @@
 #ifndef COLORSCHEME_H
 #define COLORSCHEME_H
 
-#define CLR_NRM "^"
-
+#define CLR_NRM     ""
 #define CLR_BAT_CRT ""
 #define CLR_BAT_LOW ""
 #define CLR_BAT_NRM ""
 #define CLR_BAT_CHG ""
-
 #define CLR_BT      ""
+#define CLR_DATE    ""
 
 #define CLR_0 ""
 #define CLR_1 ""

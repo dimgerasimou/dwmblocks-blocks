@@ -13,11 +13,11 @@
 #include "utils.h"
 #include "config.h"
 
-const char *months_string[] = {"January",    "February", "March",    "April",
-                               "May",        "June",     "July",     "August",
-                               "Semptember", "October",  "November", "December"};
+const char *months_string[] = {"January",   "February", "March",     "April",
+                               "May",       "June",     "July",      "August",
+                               "September", "October",  "November", "December"};
 
-const int  days_in_month[] = {31, 0, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+const int  days_in_month[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
 
 static int
 getfirstday(int mday, int wday)
@@ -54,10 +54,10 @@ static char*
 getcalendar(const int mday, const int wday, const int m, const int y)
 {
 	char buf[BUFFER_SIZE];
-	char *ret     = NULL;
-	int  fday     = 0;
-	int  daysm    = 0;
-	int  sn_check = 0;
+	char *ret  = NULL;
+	int  fday  = 0;
+	int  daysm = 0;
+	int  n     = 0;
 
 	fday  = getfirstday(mday, wday);
 	daysm = getmonthdays(m, y);
@@ -73,13 +73,13 @@ getcalendar(const int mday, const int wday, const int m, const int y)
 		}
 
 		if (i == mday)
-			sn_check = snprintf(buf, sizeof(buf), "<span color='black' bgcolor='#F38BA8'>%2d</span> ", i);
+			n = snprintf(buf, sizeof(buf), "<span color='black' bgcolor='#F38BA8'>%2d</span> ", i);
 		else if (fday == 5 || fday == 6)
-			sn_check = snprintf(buf, sizeof(buf), "<span color='#F38BA8'>%2d</span> ", i);
+			n = snprintf(buf, sizeof(buf), "<span color='#F38BA8'>%2d</span> ", i);
 		else
-			sn_check = snprintf(buf, sizeof(buf), "%2d ", i);
+			n = snprintf(buf, sizeof(buf), "%2d ", i);
 
-		if (sn_check > (int) sizeof(buf) - 1) {
+		if (n < 0 || n >= (int)sizeof(buf)) {
 			logwrite("snprintf() buffer overflow", NULL, LOG_ERROR, "dwmblocks-calendar");
 			if (ret)
 				free(ret);
@@ -98,14 +98,14 @@ static char*
 getsummary(const int m, const int y)
 {
 	char buf[BUFFER_SIZE];
-	int  size     = 0;
-	int  sn_check = 0;
+	int  size = 0;
+	int  n    = 0;
 
 	size = (15 + strlen(months_string[m])) / 2;
 
-	sn_check = snprintf(buf, sizeof(buf), "%*s %d", size, months_string[m], y);
+	n = snprintf(buf, sizeof(buf), "%*s %d", size, months_string[m], y);
 
-	if (sn_check > (int) sizeof(buf) - 1) {
+	if (n < 0 || n >= (int)sizeof(buf)) {
 		logwrite("snprintf() buffer overflow", NULL, LOG_ERROR, "dwmblocks-date");
 		return NULL;
 	}
@@ -144,9 +144,8 @@ printcalendar(void)
 static void
 execbutton(void)
 {
-	char *env = NULL;
-
-	if (!(env = getenv("BLOCK_BUTTON")))
+	char *env = getenv("BLOCK_BUTTON");
+	if (!env || !*env)
 		return;
 
 	switch (atoi(env)) {
@@ -164,7 +163,7 @@ execbutton(void)
 }
 
 int
-main()
+main(void)
 {
 	struct tm *lt = NULL;
 	time_t     ct = 0;
@@ -174,7 +173,11 @@ main()
 	ct = time(NULL);
 	lt = localtime(&ct);
 
-	printf(CLR_1 " %02d/%02d\n", lt->tm_mday, ++(lt->tm_mon));
+	if (show_icon) {
+		printf(CLR_DATE" ");
+	}
+
+	printf(CLR_DATE "%02d/%02d\n" CLR_NRM, lt->tm_mday, lt->tm_mon + 1);
 
 	return 0;
 }

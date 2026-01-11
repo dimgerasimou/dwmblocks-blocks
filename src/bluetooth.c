@@ -2,7 +2,6 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <unistd.h>
 #include <dbus/dbus.h>
 
@@ -180,12 +179,14 @@ execbutton(void)
 		return;
 
 	switch (atoi(env)) {
-	case 2:
-		togglebt();
-		break;
 	case 1:
 		forkexecvp((char**)bt_tui_cmd, "dwmblocks-bluetooth");
 		break;
+
+	case 2:
+		togglebt();
+		break;
+
 	default:
 		break;
 	}
