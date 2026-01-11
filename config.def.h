@@ -4,6 +4,7 @@
 #define CONFIG_H
 
 static const char term_cmd[] = "st";
+static const char term_title_opt[] = "-t";
 
 /* ============================================================
  * GLOBAL SETTINGS
@@ -31,7 +32,7 @@ const char *path_log[] = {"$HOME", "window-manager.log", NULL};
 #ifdef BLUETOOTH_C
 
 /* TUI application for bluetooth settings */
-const char *bt_tui_cmd[] = { term_cmd, "-e", "bluetuith", NULL };
+const char *bt_tui_cmd[] = { term_cmd, "bluetuith", NULL };
 
 #endif
 
@@ -40,6 +41,7 @@ const char *bt_tui_cmd[] = { term_cmd, "-e", "bluetuith", NULL };
  * ============================================================ */
 #ifdef DATE_C
 
+/* Show calendar icon in bar */
 const unsigned int show_icon = 1;
 
 /* GUI calendar application */
@@ -59,16 +61,15 @@ const char *args_gui_calendar[] = {
 
 /* Network management TUI */
 const char *args_tui_internet[] = {
-	"st",
-	"-t", "Network Configuration",
-	"-e", "nmtui",
+	term_cmd,
+	term_title_opt, "Network Configuration",
+	"nmtui",
 	NULL
 };
 
 /* WiFi connection script */
 const char *path_wifi_connect[] = {"$HOME", ".local", "bin", "dmenu-wifi-prompt", NULL};
 const char *args_wifi_connect[] = {"dmenu-wifi-prompt", NULL};
-
 
 #endif
 
@@ -79,9 +80,9 @@ const char *args_wifi_connect[] = {"dmenu-wifi-prompt", NULL};
 
 /* System update command */
 const char *args_update_cmd[] = {
-	"st",
-	"-t", "System Upgrade",
-	"-e", "sh", "-c",
+	term_cmd,
+	term_title_opt, "System Upgrade",
+	"sh", "-c",
 	"echo \"Upgrading system\" && paru",
 	NULL
 };
@@ -89,6 +90,12 @@ const char *args_update_cmd[] = {
 /* Package update check commands */
 const char *cmd_aur_updates = "/bin/paru -Qua";
 const char *cmd_pm_updates  = "/bin/checkupdates";
+
+/* Show release info in bar */
+const unsigned int show_release = 1;
+
+/* Show update count in bar*/
+const unsigned int show_update_count = 1;
 
 #endif
 
@@ -109,7 +116,7 @@ const char *args_language_switch[] = { "keyboard.sh", NULL };
 #ifdef MEMORY_C
 
 /* Task manager application */
-const char *args_task_manager[] = { "st", "-e", "sh", "-c", "htop", NULL };
+const char *args_task_manager[] = { term_cmd, "sh", "-c", "htop", NULL };
 
 #endif
 

@@ -18,52 +18,66 @@ getupdates(const char *cmd)
 {
 	FILE *ep;
 	char buffer[BUF_SIZE];
-	int  counter = 0;
+	unsigned int counter = 0;
 
-	if (!(ep = popen(cmd, "r"))) {
+	if (!cmd || !*cmd)
+		return 0;
+
+	ep = popen(cmd, "r");
+	if (!ep) {
 		logwrite("popen() failed for command", cmd, LOG_WARN, "dwmblocks-kernel");
 		return 0;
 	}
 
-	while(fgets(buffer, sizeof(buffer), ep))
+	while (fgets(buffer, sizeof(buffer), ep))
 		counter++;
 
-	pclose(ep);
+	(void)pclose(ep);
+
 	return counter;
 }
 
 static void
-execbutton(unsigned int  *aur, unsigned int *pm)
+execbutton(int *aur, int *pm)
 {
 	char *env;
-	
-	if (!(env = getenv("BLOCK_BUTTON")))
+
+	env = getenv("BLOCK_BUTTON");
+	if (!env || !*env)
 		return;
 
 	switch (atoi(env)) {
-	case 1:
-	{
+	case 1: {
 		char *body = NULL;
 		NotifyNotification *n = NULL;
+		char numbuf[32];
 
-		n = newnotify("Packages", "Getting packages upgrade info..", "tux", NOTIFY_URGENCY_NORMAL, 1);
+		n = newnotify("Packages", "Getting packages upgrade info..", "tux",
+		              NOTIFY_URGENCY_NORMAL, 1);
 
-		*aur = getupdates(cmd_aur_updates);
-		*pm  = getupdates(cmd_pm_updates);
+		*aur = (int)getupdates(cmd_aur_updates);
+		*pm  = (int)getupdates(cmd_pm_updates);
 
 		strapp(&body, "󰏖 Pacman Updates: ");
-		strapp(&body, uitoa(*pm));
-		strapp(&body, "\n AUR Updates: ");
-		strapp(&body, uitoa(*aur));
+		snprintf(numbuf, sizeof(numbuf), "%d", *pm);
+		strapp(&body, numbuf);
 
-		updatenotify(n, "Packages", body, "tux", NOTIFY_URGENCY_NORMAL, 0, 1);
+		strapp(&body, "\n AUR Updates: ");
+		snprintf(numbuf, sizeof(numbuf), "%d", *aur);
+		strapp(&body, numbuf);
+
+		if (n)
+			updatenotify(n, "Packages", body ? body : "No data", "tux",
+			             NOTIFY_URGENCY_NORMAL, 0, 1);
+
 		free(body);
-		freenotify(n);
+		if (n)
+			freenotify(n);
 		break;
 	}
 
 	case 3:
-		forkexecvp((char**) args_update_cmd, "dwmblocks-kernel");
+		forkexecvp((char **)args_update_cmd, "dwmblocks-kernel");
 		break;
 
 	default:
@@ -74,25 +88,45 @@ execbutton(unsigned int  *aur, unsigned int *pm)
 int
 main(void)
 {
-	struct utsname buf;
-	char*          release;
-	unsigned int   aur = 0;
-	unsigned int   pm  = 0;
+	const char *release = NULL;
+	int aur = -1;
+	int pm  = -1;
 
 	execbutton(&aur, &pm);
 
-	aur = aur == 0 ? getupdates(cmd_aur_updates) : aur;
-	pm  = pm == 0  ? getupdates(cmd_pm_updates)  : pm;
+	if (aur == -1)
+		aur = (int)getupdates(cmd_aur_updates);
+	if (pm == -1)
+		pm = (int)getupdates(cmd_pm_updates);
 
-	if (uname(&buf))
-		logwrite("Failed in allocatting utsname struct", NULL, LOG_FATAL, "dwmblocks-kernel");
+	if (show_release) {
+		struct utsname buf;
 
-	release = strtok(buf.release, "-");
+		if (uname(&buf) != 0) {
+			logwrite("uname() failed while reading kernel release", NULL, LOG_WARN,
+			         "dwmblocks-kernel");
+			release = NULL;
+		} else {
+			/* Strip suffix like "-arch1-1" -> "6.7.4" */
+			char *dash = strchr(buf.release, '-');
+			if (dash)
+				*dash = '\0';
+			release = buf.release;
+		}
+	}
 
-	if ((aur + pm) > 0)
-		printf(CLR_12"󰏖 %d  %s\n", aur + pm, release);
-	else
-		printf(CLR_12" %s\n", release);
+	if ((aur + pm) > 0) {
+		printf(CLR_KRN_PKG "󰏖 ");
+		if (show_update_count)
+			printf("%d ", aur + pm);
+	}
+
+	printf(CLR_KRN_NRM "");
+
+	if (show_release && release && *release)
+		printf(" %s", release);
+
+	printf("\n" CLR_NRM);
 
 	return 0;
 }

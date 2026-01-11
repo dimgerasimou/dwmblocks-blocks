@@ -12,6 +12,8 @@
 #define CLR_DATE    "^c#F38BA8^" /* red */
 #define CLR_NET_NRM "^c#89DCEB^" /* cyan */
 #define CLR_NET_ERR "^c#EBA0AC^" /* red (highlight)*/
+#define CLR_KRN_PKG "^c#F38BA8^" /* red */
+#define CLR_KRN_NRM "^c#89B4FA^" /* blue */
 
 #define CLR_0 "^c#45475A^"
 #define CLR_1 "^c#F38BA8^"
