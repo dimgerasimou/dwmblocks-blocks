@@ -12,10 +12,14 @@
 #include "utils.h"
 #include "config.h"
 
-const char *bt_icons[] = {"󰂲", "󰂯", "󰥰"};
+/* two states: off, on */
+static const char *icons_bt[] = { "󰂲", "󰂯" };
+
+/* minimal robustness: try hci0 then hci1 */
+static const char *adapter_paths[] = { "/org/bluez/hci0", "/org/bluez/hci1", NULL };
 
 static int
-getbtadapterstate(DBusConnection  *conn, DBusError *err)
+getbtadapterstate(DBusConnection *conn, DBusError *err, const char *objpath)
 {
 	DBusMessage     *msg, *reply;
 	DBusMessageIter  args, replyArgs;
@@ -24,9 +28,8 @@ getbtadapterstate(DBusConnection  *conn, DBusError *err)
 	const char  *prop    = "Powered";
 	dbus_bool_t  powered = FALSE;
 
-	msg = dbus_message_new_method_call("org.bluez", "/org/bluez/hci0",
+	msg = dbus_message_new_method_call("org.bluez", objpath,
 	                                   "org.freedesktop.DBus.Properties", "Get");
-
 	if (!msg) {
 		logwrite("Failed to create DBus message.", NULL, LOG_WARN, "dwmblocks-bluetooth");
 		return -1;
@@ -40,112 +43,65 @@ getbtadapterstate(DBusConnection  *conn, DBusError *err)
 	dbus_message_unref(msg);
 
 	if (dbus_error_is_set(err)) {
-		logwrite("D-Bus Error:", err->message, LOG_WARN, "dwmblocks-bluetooth");
+		logwrite("D-Bus error", err->message, LOG_WARN, "dwmblocks-bluetooth");
 		dbus_error_free(err);
 		return -1;
 	}
 
-	if (!reply) {
-		logwrite("D-Bus: No reply received.", NULL, LOG_WARN, "dwmblocks-bluetooth");
+	if (!reply)
 		return -1;
-	}
 
 	if (dbus_message_iter_init(reply, &replyArgs)) {
 		DBusMessageIter variant;
 		dbus_message_iter_recurse(&replyArgs, &variant);
 		dbus_message_iter_get_basic(&variant, &powered);
 	}
-	dbus_message_unref(reply);
 
-	return powered;
+	dbus_message_unref(reply);
+	return powered ? 1 : 0;
 }
 
 static int
 getbtstate(void)
 {
-	DBusConnection *conn  = NULL;
-	DBusError       err;
-	int             state = 0;
+	DBusConnection *conn = NULL;
+	DBusError err;
+	int state = -1;
 
-	/* initializing DBus connection */
 	dbus_error_init(&err);
-	
-	if (!(conn = dbus_bus_get(DBUS_BUS_SYSTEM, &err)) || dbus_error_is_set(&err)) {
-		logwrite("Failed to connect to the DBus system bus.", err.message, LOG_WARN, "dwmblocks-bluetooth-menu");
+
+	conn = dbus_bus_get(DBUS_BUS_SYSTEM, &err);
+	if (!conn || dbus_error_is_set(&err)) {
+		logwrite("Failed to connect to the DBus system bus.", err.message, LOG_WARN, "dwmblocks-bluetooth");
 		dbus_error_free(&err);
 		return -1;
 	}
 
-	state = getbtadapterstate(conn, &err);
-
-	if (state != 1) {
-		dbus_connection_unref(conn);
-		return state;
+	for (int i = 0; adapter_paths[i]; i++) {
+		dbus_error_init(&err);
+		state = getbtadapterstate(conn, &err, adapter_paths[i]);
+		if (state >= 0)
+			break;
 	}
 
 	dbus_connection_unref(conn);
 	return state;
 }
 
-static void
-togglebt(void)
+static int
+setbtpowered(DBusConnection *conn, DBusError *err, const char *objpath, dbus_bool_t powered)
 {
-	DBusConnection  *conn;
-	DBusMessage     *msg;
-	DBusMessage     *reply;
-	DBusMessageIter  args;
-	DBusMessageIter  replyArgs;
-	DBusMessageIter  valueIter;
-	DBusError        err;
+	DBusMessage     *msg, *reply;
+	DBusMessageIter  args, valueIter;
 
-	const char  *iface   = "org.bluez.Adapter1";
-	const char  *prop    = "Powered";
-	dbus_bool_t  powered = FALSE;
+	const char *iface = "org.bluez.Adapter1";
+	const char *prop  = "Powered";
 
-	dbus_error_init(&err);
-
-	if (!(conn = dbus_bus_get(DBUS_BUS_SYSTEM, &err))) {
-		logwrite("Failed to connect to the DBus system bus.", err.message, LOG_WARN, "dwmblocks-bluetooth-menu");
-		dbus_error_free(&err);
-		exit(EXIT_FAILURE);
-	}
-
-	msg = dbus_message_new_method_call("org.bluez", "/org/bluez/hci0",
-	                                   "org.freedesktop.DBus.Properties", "Get");
-
-	if (!msg) {
-		logwrite("Failed to create DBus message.", NULL, LOG_WARN, "dwmblocks-bluetooth-menu");
-		exit(EXIT_FAILURE);
-	}
-
-	dbus_message_iter_init_append(msg, &args);
-	dbus_message_iter_append_basic(&args, DBUS_TYPE_STRING, &iface);
-	dbus_message_iter_append_basic(&args, DBUS_TYPE_STRING, &prop);
-
-	reply = dbus_connection_send_with_reply_and_block(conn, msg, -1, &err);
-	dbus_message_unref(msg);
-
-	if (!reply) {
-		logwrite("Failed to get Bluetooth Powered State.", err.message, LOG_WARN, "dwmblocks-bluetooth-menu");
-		dbus_error_free(&err);
-		exit(EXIT_FAILURE);
-	}
-
-	if (dbus_message_iter_init(reply, &replyArgs)) {
-		DBusMessageIter variant;
-		dbus_message_iter_recurse(&replyArgs, &variant);
-		dbus_message_iter_get_basic(&variant, &powered);
-	}
-	dbus_message_unref(reply);
-
-	powered = !powered;
-
-	msg = dbus_message_new_method_call("org.bluez", "/org/bluez/hci0",
+	msg = dbus_message_new_method_call("org.bluez", objpath,
 	                                   "org.freedesktop.DBus.Properties", "Set");
-
 	if (!msg) {
-		logwrite("Failed to create DBus message.", NULL, LOG_WARN, "dwmblocks-bluetooth-menu");
-		exit(EXIT_FAILURE);
+		logwrite("Failed to create DBus message.", NULL, LOG_WARN, "dwmblocks-bluetooth");
+		return -1;
 	}
 
 	dbus_message_iter_init_append(msg, &args);
@@ -156,35 +112,80 @@ togglebt(void)
 	dbus_message_iter_append_basic(&valueIter, DBUS_TYPE_BOOLEAN, &powered);
 	dbus_message_iter_close_container(&args, &valueIter);
 
-	reply = dbus_connection_send_with_reply_and_block(conn, msg, -1, &err);
+	reply = dbus_connection_send_with_reply_and_block(conn, msg, -1, err);
 	dbus_message_unref(msg);
 
-	if (!reply) {
-		logwrite("Failed to set Bluetooth Powered state.", err.message, LOG_WARN, "dwmblocks-bluetooth-menu");
-		dbus_error_free(&err);
-		exit(EXIT_FAILURE);
+	if (dbus_error_is_set(err)) {
+		logwrite("D-Bus error", err->message, LOG_WARN, "dwmblocks-bluetooth");
+		dbus_error_free(err);
+		return -1;
 	}
 
+	if (!reply)
+		return -1;
+
 	dbus_message_unref(reply);
+	return 0;
+}
+
+static void
+togglebt(void)
+{
+	DBusConnection  *conn = NULL;
+	DBusError        err;
+	int              state = -1;
+	const char      *objpath = NULL;
+
+	dbus_error_init(&err);
+
+	conn = dbus_bus_get(DBUS_BUS_SYSTEM, &err);
+	if (!conn || dbus_error_is_set(&err)) {
+		logwrite("Failed to connect to the DBus system bus.", err.message, LOG_WARN, "dwmblocks-bluetooth");
+		dbus_error_free(&err);
+		return;
+	}
+
+	/* find an adapter we can talk to */
+	for (int i = 0; adapter_paths[i]; i++) {
+		dbus_error_init(&err);
+		state = getbtadapterstate(conn, &err, adapter_paths[i]);
+		if (state >= 0) {
+			objpath = adapter_paths[i];
+			break;
+		}
+	}
+
+	if (!objpath) {
+		logwrite("No Bluetooth adapter found (hci0/hci1).", NULL, LOG_WARN, "dwmblocks-bluetooth");
+		dbus_connection_unref(conn);
+		return;
+	}
+
+	/* toggle */
+	dbus_error_init(&err);
+	if (setbtpowered(conn, &err, objpath, state ? FALSE : TRUE) < 0) {
+		/* error already logged */
+		dbus_connection_unref(conn);
+		return;
+	}
+
+	dbus_connection_unref(conn);
 }
 
 static void
 execbutton(void)
 {
-	char *env = NULL;
-
-	if (!(env = getenv("BLOCK_BUTTON")))
+	const char *env = getenv("BLOCK_BUTTON");
+	if (!env || !*env)
 		return;
 
 	switch (atoi(env)) {
 	case 2:
 		togglebt();
 		break;
-
 	case 1:
-		forkexecvp((char**) args_tui_settings, "dwmblocks-bluetooth");
+		forkexecvp((char**)bt_tui_cmd, "dwmblocks-bluetooth");
 		break;
-
 	default:
 		break;
 	}
@@ -198,11 +199,11 @@ main(void)
 	execbutton();
 
 	state = getbtstate();
+	if (state < 0) {
+		/* don’t make the whole block fail; just show “off” */
+		state = 0;
+	}
 
-	if (state < 0)
-		return -state;
-
-	printf(CLR_4 BG_1"%s\n", bt_icons[state]);
-
+	printf(CLR_BT "%s\n" CLR_NRM, icons_bt[state ? 1 : 0]);
 	return EXIT_SUCCESS;
 }

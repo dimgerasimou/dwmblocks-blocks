@@ -3,6 +3,15 @@
 #ifndef COLORSCHEME_H
 #define COLORSCHEME_H
 
+#define CLR_NRM "^"
+
+#define CLR_BAT_CRT ""
+#define CLR_BAT_LOW ""
+#define CLR_BAT_NRM ""
+#define CLR_BAT_CHG ""
+
+#define CLR_BT      ""
+
 #define CLR_0 ""
 #define CLR_1 ""
 #define CLR_2 ""
@@ -19,8 +28,8 @@
 #define CLR_13 ""
 #define CLR_14 ""
 #define CLR_15 ""
-#define BG_0 " "
-#define BG_1 " "
-#define NRM " "
+#define BG_0 ""
+#define BG_1 ""
+#define NRM ""
 
 #endif /* COLORSCHEME_H */

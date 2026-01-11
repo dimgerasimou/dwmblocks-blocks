@@ -1,19 +1,25 @@
 /* See LICENSE file for copyright and license details. */
 
-#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 
 #define BATTERY_C
-#define BUFFER_SIZE 64
+#define BUF_SIZE 64
 
 #include "colorscheme.h"
 #include "utils.h"
 #include "config.h"
 
-const char *battery_icon_list[]  = { CLR_1" ", CLR_3" ", CLR_2" ", CLR_2" ", CLR_2" " };
+static const char *icons_battery[] = {
+	CLR_BAT_CRT " ",
+	CLR_BAT_LOW " ",
+	CLR_BAT_NRM " ",
+	CLR_BAT_NRM " ",
+	CLR_BAT_NRM " ",
+};
+
+static const char *icon_charging = CLR_BAT_CHG " ";
 
 #ifdef POWER_MANAGEMENT
 const char *optimus_manager_command = "optimus-manager --status";
@@ -23,18 +29,22 @@ const char *mode_icon_list[]        = { "battery", "intel", "deepin-graphics-dri
 static unsigned int
 getmode(void)
 {
-	char buf[BUFFER_SIZE];
-	FILE         *ep  = NULL;
-	unsigned int  ret = 0;
+	char buf[BUF_SIZE];
+	FILE *ep = NULL;
+	unsigned int ret = 0;
 
-	if (!(ep = popen(optimus_manager_command, "r"))) {
+	ep = popen(optimus_manager_command, "r");
+	if (!ep) {
 		logwrite("popen() failed for", optimus_manager_command, LOG_WARN, "dwmblocks-battery");
 		return 0;
 	}
 
-	while (fgets(buf, sizeof(buf), ep))
+	buf[0] = '\0';
+	while (fgets(buf, sizeof(buf), ep)) {
 		if (strstr(buf, "Current"))
 			break;
+		buf[0] = '\0';
+	}
 
 	if (strstr(buf, "integrated"))
 		ret = 1;
@@ -44,15 +54,14 @@ getmode(void)
 		ret = 3;
 
 	pclose(ep);
-
 	return ret;
 }
 
 static void
 send_notification(const char *capacity, const char *status)
 {
-	char         *body = NULL;
-	unsigned int  mode = getmode();
+	char *body = NULL;
+	unsigned int mode = getmode();
 
 	strapp(&body, "Battery capacity: ");
 	strapp(&body, capacity);
@@ -61,8 +70,7 @@ send_notification(const char *capacity, const char *status)
 	strapp(&body, "\nOptimus manager:  ");
 	strapp(&body, mode_text_list[mode]);
 
-	notify("Power", body, (char*) mode_icon_list[mode], NOTIFY_URGENCY_NORMAL, 1);
-
+	notify("Power", body, (char*)mode_icon_list[mode], NOTIFY_URGENCY_NORMAL, 1);
 	free(body);
 }
 
@@ -79,7 +87,6 @@ send_notification(const char *capacity, const char *status)
 	strapp(&body, status);
 
 	notify("Power", body, "battery", NOTIFY_URGENCY_NORMAL, 1);
-
 	free(body);
 }
 
@@ -88,129 +95,148 @@ send_notification(const char *capacity, const char *status)
 static void
 execbutton(const unsigned int capacity, const char *status)
 {
-	char *env = NULL;
-
-	if (!(env = getenv("BLOCK_BUTTON")))
+	const char *env = getenv("BLOCK_BUTTON");
+	if (!env || !*env)
 		return;
 
-	switch (atoi(env)) {
-	case 1:
-	{
+	if (atoi(env) == 1) {
 		char *capstr = uitoa(capacity);
-
 		if (!capstr)
-			break;
-
-		send_notification(capstr, status);
-		
+			return;
+		send_notification(capstr, status ? status : "Unknown");
 		free(capstr);
-		break;
 	}
-	default:
-		break;
+}
+
+static char *
+getbatterypath(void)
+{
+	const char *base = "/sys/class/power_supply";
+	DIR *d = opendir(base);
+	struct dirent *e;
+	char typepath[PATH_MAX], buf[32];
+
+	if (!d) return NULL;
+
+	while ((e = readdir(d))) {
+		FILE *fp;
+
+		if (e->d_name[0] == '.')
+			continue;
+
+		snprintf(typepath, sizeof(typepath), "%s/%s/type", base, e->d_name);
+		fp = fopen(typepath, "r");
+		if (!fp) continue;
+
+		if (fgets(buf, sizeof(buf), fp)) {
+			buf[strcspn(buf, "\n")] = 0;
+			if (strcmp(buf, "Battery") == 0) {
+				fclose(fp);
+				closedir(d);
+				snprintf(typepath, sizeof(typepath), "%s/%s", base, e->d_name);
+				return strdup(typepath);
+			}
+		}
+		fclose(fp);
 	}
+
+	closedir(d);
+	return NULL;
 }
 
 static unsigned int
 getcapacity(void)
 {
-	FILE         *fp   = NULL;
-	char         *path = NULL;
-	unsigned int  ret  = 0;
+	FILE *fp;
+	char *bat;
+	char path[PATH_MAX];
+	unsigned int cap = 0;
 
-	strapp(&path, path_battery_kernel);
-	strapp(&path, "/capacity");
+	cap = 0;
+	bat = getbatterypath();
+	if (!bat)
+		return 0;
 
-	if (!(fp = fopen(path, "r")))
-		logwrite("fopen() failed for file", path, LOG_FATAL, "dwmblocks-battery");
+	snprintf(path, sizeof(path), "%s/capacity", bat);
+	free(bat);
 
-	fscanf(fp, "%u", &ret);
+	fp = fopen(path, "r");
+	if (!fp) {
+		logwrite("fopen() failed for file", path, LOG_ERROR, "dwmblocks-battery");
+		return 0;
+	}
+
+	if (fscanf(fp, "%u", &cap) != 1)
+		cap = 0;
 	fclose(fp);
-	free(path);
 
-	return ret;
+	if (cap > 100)
+		cap = 100;
+
+	return cap;
 }
 
-static char*
+static char *
 getstatus(void)
 {
-	char buf[BUFFER_SIZE];
-	FILE *fp   = NULL;
-	char *path = NULL;
+	FILE *fp;
+	char *bat;
+	char path[PATH_MAX];
+	char buf[BUF_SIZE];
 
-	strapp(&path, path_battery_kernel);
-	strapp(&path, "/status");
+	bat = getbatterypath();
+	if (!bat)
+		return 0;
 
-	if (!(fp = fopen(path, "r")))
-		logwrite("fopen() failed for file", path, LOG_FATAL, "dwmblocks-battery");
+	snprintf(path, sizeof(path), "%s/status", bat);
+	free(bat);
 
-	fgets(buf, sizeof(buf), fp);
-	buf[BUFFER_SIZE - 1] = '\0';
+
+	fp = fopen(path, "r");
+	if (!fp) {
+		logwrite("fopen() failed for file", path, LOG_ERROR, "dwmblocks-battery");
+		return 0;
+	}
+
+	buf[0] = '\0';
+	if (!fgets(buf, sizeof(buf), fp))
+		strcpy(buf, "Unknown");
 
 	fclose(fp);
-	free(path);
 
 	trimtonewl(buf);
-
 	return strdup(buf);
 }
 
-
-static void
-batterymode(const unsigned int capacity)
+static unsigned int
+battery_icon_index(unsigned int capacity)
 {
-	FILE *fp;
-	char *path = NULL;
-	
-	unsigned int prev_capacity = 0;
-	unsigned int prev_ac = 0;
-	unsigned int ac = 0;
-	
-	fp = fopen(path_tmp_file, "r");
-
-	if (fp) {
-		fscanf(fp, "%u, %u", &prev_ac, &prev_capacity);
-		fclose(fp);
-	}
-
-	strapp(&path, path_adapter_kernel);
-	strapp(&path, "/online");
-	
-	fp = fopen(path, "r");
-	if (fp) {
-		fscanf(fp, "%u", &ac);
-		fclose(fp);
-	}
-
-	free(path);
-
-	fp = fopen(path_tmp_file, "w");
-	fprintf(fp, "%u, %u\n", ac, capacity);
-	fclose(fp);
-
-	if (ac != prev_ac || (!ac && prev_capacity >= 25 && capacity < 25)) {
-		path = getpath((char**) path_power_mode);
-		forkexecvs(path, (char**) args_power_mode, "dwmblocks-battery");
-		free(path);
-	}
+	if (capacity < 10)
+		return 0;
+	if (capacity < 30)
+		return 1;
+	if (capacity < 50)
+		return 2;
+	if (capacity < 75)
+		return 3;
+	return 4;
 }
+
 int
 main(void)
 {
-	char         *status   = getstatus();
-	unsigned int  capacity = getcapacity();
+	char *status = getstatus();
+	unsigned int capacity = getcapacity();
+	const char *icon;
 
-	batterymode(capacity);
 	execbutton(capacity, status);
 
-	if(!strcmp(status, "Charging")) {
-		printf(CLR_3 BG_1" "NRM"\n");
-		free(status);
+	if (status && strcmp(status, "Charging") == 0)
+		icon = icon_charging;
+	else
+		icon = icons_battery[battery_icon_index(capacity)];
 
-		return EXIT_SUCCESS;
-	}
-
-	printf(BG_1"%s\n", battery_icon_list[lround(capacity / 25.0)]);
+	printf("%s\n" CLR_NRM, icon);
 
 	free(status);
 	return 0;

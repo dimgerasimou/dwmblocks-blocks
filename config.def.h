@@ -3,6 +3,8 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+static const char term_cmd[] = "st";
+
 /* ============================================================
  * GLOBAL SETTINGS
  * ============================================================ */
@@ -21,19 +23,6 @@ const char *path_log[] = {"$HOME", "window-manager.log", NULL};
 /* Enable power management features (optimus-manager support) */
 #define POWER_MANAGEMENT
 
-/* Kernel paths for battery information */
-const char path_battery_kernel[] = "/sys/class/power_supply/BAT1";
-const char path_adapter_kernel[] = "/sys/class/power_supply/ADP1";
-
-/* Temporary file for battery state tracking */
-const char path_tmp_file[] = "/tmp/dwmblocks-battery";
-
-/* Battery critical level percentage */
-const unsigned int level_battery_critical = 25;
-
-const char *path_power_mode[] = {"$HOME", ".config", "dwm", "power-mode.sh", NULL};
-const char *args_power_mode[] = {"power-mode.sh", NULL};
-
 #endif
 
 /* ============================================================
@@ -42,7 +31,7 @@ const char *args_power_mode[] = {"power-mode.sh", NULL};
 #ifdef BLUETOOTH_C
 
 /* TUI application for bluetooth settings */
-const char *args_tui_settings[] = { "st", "-e", "bluetuith", NULL };
+const char *bt_tui_cmd[] = { term_cmd, "-e", "bluetuith", NULL };
 
 #endif
 
