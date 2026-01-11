@@ -18,6 +18,8 @@ typedef struct {
 	unsigned int done;
 } AudioInfo;
 
+static const char *icons[] = {" ", " ", " ", " ", ""};
+
 static pa_mainloop *ml = NULL;
 static pa_context *ctx = NULL;
 static pa_mainloop_api *mlapi = NULL;
@@ -259,23 +261,53 @@ int
 main(void)
 {
 	AudioInfo **a;
-	char s[16];
+	char v[16] = "\0";
+	char c[32] = "\0";
+	const char *icon = icons[4];
+	int volume;
+	int mute;
 
 	a = getaudioinfo();
 	execbutton(a);
-	
-	if (a[0]->mute || a[0]->done != 1) {
-		strcpy(s, " ");
-	} else if (a[0]->volume > 66) {
-		snprintf(s, sizeof(s), " %d%%", a[0]->volume);
-	} else if (a[0]->volume > 33) {
-		snprintf(s, sizeof(s), " %d%%", a[0]->volume);
-	} else {
-		snprintf(s, sizeof(s), " %d%%", a[0]->volume);
+
+	mute   = a[0]->mute;
+	volume = a[0]->volume;
+
+	if (a[0]->done != 1) {
+		mute = 1;
+		volume = 0;
 	}
 
 	freeaudioinfo(&a);
 
-	printf(CLR_2"%s\n", s);
+	if (display_type != 2) {
+		if (volume > 66)
+			icon = icons[3];
+		else if (volume > 33)
+			icon = icons[2];
+		else
+		 	icon = icons[1];
+
+		if (mute)
+			icon = icons[0];
+	}
+
+	if (display_type != 1) {
+		unsigned int pad = 3;
+		if (!volume_padding)
+			pad = 0;
+		sprintf(v, "%*d%%", pad, volume);
+	}
+
+	if (mute) {
+		strncpy(c, CLR_VOL_MUT, sizeof(c));
+		c[sizeof(c) - 1] = '\0';
+	} else {
+		strncpy(c, CLR_VOL_NRM, sizeof(c));
+		c[sizeof(c) - 1] = '\0';
+	}
+
+	printf("%s%s%s\n" CLR_NRM, c, icon, v);
+
 	return 0;
 }

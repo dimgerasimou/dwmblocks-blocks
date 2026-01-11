@@ -162,6 +162,16 @@ const unsigned int show_icon = 1;
  * ============================================================ */
 #ifdef VOLUME_C
 
+/* What the block displays:
+ *   0 - icon and volume
+ *   1 - icon only
+ *   2 - volume only
+ */
+const unsigned int display_type = 0;
+
+/* Padding for volume string; boolean */
+const unsigned int volume_padding = 1;
+
 /* Audio equalizer application */
 const char *args_eqalizer[]        = {"easyeffects", NULL};
 
