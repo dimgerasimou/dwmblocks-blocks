@@ -88,7 +88,7 @@ execbutton(int *aur, int *pm)
 int
 main(void)
 {
-	const char *release = NULL;
+	char *release = NULL;
 	int aur = -1;
 	int pm  = -1;
 
@@ -105,13 +105,14 @@ main(void)
 		if (uname(&buf) != 0) {
 			logwrite("uname() failed while reading kernel release", NULL, LOG_WARN,
 			         "dwmblocks-kernel");
-			release = NULL;
 		} else {
-			/* Strip suffix like "-arch1-1" -> "6.7.4" */
-			char *dash = strchr(buf.release, '-');
-			if (dash)
-				*dash = '\0';
-			release = buf.release;
+			/* duplicate and strip suffix like "-arch1-1" */
+			release = strdup(buf.release);
+			if (release) {
+				char *dash = strchr(release, '-');
+				if (dash)
+					*dash = '\0';
+			}
 		}
 	}
 
@@ -128,5 +129,6 @@ main(void)
 
 	printf("\n" CLR_NRM);
 
+	free(release);
 	return 0;
 }
