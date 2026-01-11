@@ -9,9 +9,9 @@
 #define DATE_C
 #define BUFFER_SIZE 64
 
-#include "../include/colorscheme.h"
-#include "../include/utils.h"
-#include "../include/config.h"
+#include "colorscheme.h"
+#include "utils.h"
+#include "config.h"
 
 const char *months_string[] = {"January",    "February", "March",    "April",
                                "May",        "June",     "July",     "August",

@@ -15,8 +15,8 @@
 
 #define UTILS_C
 
-#include "../include/utils.h"
-#include "../include/config.h"
+#include "utils.h"
+#include "config.h"
 
 
 /* file specific functions */

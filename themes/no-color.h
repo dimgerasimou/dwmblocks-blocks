@@ -19,8 +19,8 @@
 #define CLR_13 ""
 #define CLR_14 ""
 #define CLR_15 ""
-#define BG_0 ""
-#define BG_1 ""
-#define NRM ""
+#define BG_0 " "
+#define BG_1 " "
+#define NRM " "
 
 #endif /* COLORSCHEME_H */

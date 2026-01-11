@@ -9,9 +9,9 @@
 #define KERNEL_C
 #define BUF_SIZE 64
 
-#include "../include/colorscheme.h"
-#include "../include/utils.h"
-#include "../include/config.h"
+#include "colorscheme.h"
+#include "utils.h"
+#include "config.h"
 
 static unsigned int
 getupdates(const char *cmd)

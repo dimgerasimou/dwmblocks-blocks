@@ -11,9 +11,9 @@
 
 #define POWER_C
 
-#include "../include/colorscheme.h"
-#include "../include/utils.h"
-#include "../include/config.h"
+#include "colorscheme.h"
+#include "utils.h"
+#include "config.h"
 
 /* menu prompts */
 const char *menu_power           = " Shutdown\t0\n Reboot\t1\n\n󰗽 Logout\t2\n Lock\t3\n\n Restart DwmBlocks\t4";

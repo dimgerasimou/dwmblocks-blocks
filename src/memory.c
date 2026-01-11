@@ -7,9 +7,9 @@
 
 #define MEMORY_C
 
-#include "../include/colorscheme.h"
-#include "../include/utils.h"
-#include "../include/config.h"
+#include "colorscheme.h"
+#include "utils.h"
+#include "config.h"
 
 
 static long

@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <time.h>
 
-#include "../include/colorscheme.h"
+#include "colorscheme.h"
 
 int
 main(void)

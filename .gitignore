@@ -1,5 +1,12 @@
+# configuration files
+config.h
+*.current_theme
+*colorscheme.h
+
+# code editor files
 .cache
 compile_commands.json
-include/colorscheme.h
+
+# build artifacts
 bin/
 build/

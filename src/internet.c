@@ -1,16 +1,16 @@
 /* See LICENSE file for copyright and license details. */
 
 #include <NetworkManager.h>
+#include <nm-dbus-interface.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #define INTERNET_C
 
-#include "nm-dbus-interface.h"
-#include "../include/colorscheme.h"
-#include "../include/utils.h"
-#include "../include/config.h"
+#include "colorscheme.h"
+#include "utils.h"
+#include "config.h"
 
 const char *notif_icons[]  = {"x", "tdenetworkmanager", "wifi-radar"};
 const char *status_icons[] = {CLR_9"󰤮 ", CLR_6" ", CLR_6"󰤯 ", CLR_6"󰤟 ", CLR_6"󰤢 ", CLR_6"󰤥 ", CLR_6"󰤨 ", CLR_9"󰤫 "};
