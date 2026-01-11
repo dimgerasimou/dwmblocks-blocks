@@ -17,6 +17,7 @@
 #define CLR_KBD     "^c#CBA6F7^" /* magenta */
 #define CLR_MEM     "^c#F9E2AF^" /* yellow */
 #define CLR_PWR     "^c#F38BA8^" /* red */
+#define CLR_TIM     "^c#CDD6F4^" /* white */
 
 #define CLR_0 "^c#45475A^"
 #define CLR_1 "^c#F38BA8^"
