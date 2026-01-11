@@ -7,87 +7,155 @@
 #include <X11/Xresource.h>
 
 #define TERM_COLS 16
-#define BG_COLS 2
 
-static char termcols[][8] = { "#45475A", "#F38BA8", "#A6E3A1", "#F9E2AF",
-                              "#89B4FA", "#F5C2E7", "#94E2D5", "#BAC2DE",
-                              "#585B70", "#F38BA8", "#A6E3A1", "#F9E2AF",
-                              "#89B4FA", "#F5C2E7", "#94E2D5", "#A6ADC8" };
-static char bgcols[][8]   = { "#1E1E2E", "#313244" };
-
-typedef struct {
-	char *name;
-	char *dst;
-} ResourcePref;
-
-/* Xresources preferences to load at startup */
-ResourcePref resources[] = {
-	{ "color0",      termcols[0] },
-	{ "color1",      termcols[1] },
-	{ "color2",      termcols[2] },
-	{ "color3",      termcols[3] },
-	{ "color4",      termcols[4] },
-	{ "color5",      termcols[5] },
-	{ "color6",      termcols[6] },
-	{ "color7",      termcols[7] },
-	{ "color8",      termcols[8] },
-	{ "color9",      termcols[9] },
-	{ "color10",     termcols[10] },
-	{ "color11",     termcols[11] },
-	{ "color12",     termcols[12] },
-	{ "color13",     termcols[13] },
-	{ "color14",     termcols[14] },
-	{ "color15",     termcols[15] },
-	{ "background0", bgcols[0] },
-	{ "background1", bgcols[1] },
+/* Classic xterm 16-color defaults (fallback if Xresources has no colorN) */
+static const char xterm_default_cols[TERM_COLS][8] = {
+	"#000000", "#CD0000", "#00CD00", "#CDCD00",
+	"#0000EE", "#CD00CD", "#00CDCD", "#E5E5E5",
+	"#7F7F7F", "#FF0000", "#00FF00", "#FFFF00",
+	"#5C5CFF", "#FF00FF", "#00FFFF", "#FFFFFF"
 };
 
-static void
-resourceload(XrmDatabase db, char *name, void *dst)
+/* Loaded palette (color0..color15) */
+static char termcols[TERM_COLS][8];
+
+/* Final named colors (hex only, "#RRGGBB") */
+static char clr_bat_crt[8], clr_bat_low[8], clr_bat_nrm[8], clr_bat_chg[8];
+static char clr_bt[8], clr_date[8], clr_net_nrm[8], clr_net_err[8];
+static char clr_krn_pkg[8], clr_krn_nrm[8], clr_kbd[8], clr_mem[8];
+static char clr_pwr[8], clr_tim[8], clr_vol_nrm[8], clr_vol_mut[8];
+
+static int
+gethexresource(XrmDatabase db, const char *key, char out[8])
 {
 	XrmValue ret;
-	char fullname[256];
-	char color[8];
 	char *type;
+	char name[256];
 
-	snprintf(fullname, sizeof(fullname), "%s.%s", "dwmblocks", name);
-	
-	fullname[sizeof(fullname)-1] = '\0';
-	if (XrmGetResource(db, fullname, "*", &type, &ret) == 0)
-		return;
-	if (ret.addr == NULL)
-		return;
+	/* 1) dwmblocks.key */
+	snprintf(name, sizeof(name), "dwmblocks.%s", key);
+	name[sizeof(name) - 1] = '\0';
+	if (XrmGetResource(db, name, "*", &type, &ret) && ret.addr) {
+		strncpy(out, ret.addr, 7);
+		out[7] = '\0';
+		return 1;
+	}
 
-	strncpy(color, ret.addr, sizeof(color) - 1);
-	color[sizeof(color)-1] = '\0';
-	strcpy(dst, color);
+	/* 2) *key (global / wildcard), e.g. *color4: #... or *.color4: #... */
+	snprintf(name, sizeof(name), "*%s", key);
+	name[sizeof(name) - 1] = '\0';
+	if (XrmGetResource(db, name, "*", &type, &ret) && ret.addr) {
+		strncpy(out, ret.addr, 7);
+		out[7] = '\0';
+		return 1;
+	}
+
+	return 0;
+}
+
+static void
+loadpalette(XrmDatabase db)
+{
+	/* start from xterm defaults */
+	for (int i = 0; i < TERM_COLS; i++) {
+		strncpy(termcols[i], xterm_default_cols[i], 8);
+		termcols[i][7] = '\0';
+	}
+
+	/* override from Xresources if present */
+	for (int i = 0; i < TERM_COLS; i++) {
+		char key[32];
+		char hex[8];
+
+		snprintf(key, sizeof(key), "color%d", i);
+		if (gethexresource(db, key, hex)) {
+			if (hex[0] == '#' && strlen(hex) >= 7) {
+				strncpy(termcols[i], hex, 8);
+				termcols[i][7] = '\0';
+			}
+		}
+	}
+}
+
+/*
+ * OPTIONAL: If you want “if missing in Xresources, use a palette entry”
+ * instead of catppuccin-mono default for a specific key, use this helper.
+ * (Right now we default to catppuccin-mono as you requested.)
+ */
+static void
+loadnamed_or_palette(XrmDatabase db, const char *key, char out[8], int fallback_idx)
+{
+	char hex[8];
+
+	if (db && gethexresource(db, key, hex) && hex[0] == '#' && strlen(hex) >= 7) {
+		strncpy(out, hex, 8);
+		out[7] = '\0';
+		return;
+	}
+
+	if (fallback_idx < 0) fallback_idx = 0;
+	if (fallback_idx >= TERM_COLS) fallback_idx = TERM_COLS - 1;
+
+	strncpy(out, termcols[fallback_idx], 8);
+	out[7] = '\0';
 }
 
 static void
 loadxresources(void)
 {
-	ResourcePref *p;
-	XrmDatabase db;
-	Display *display;
+	Display *dpy;
 	char *resm;
+	XrmDatabase db;
 
-	if (!(display = XOpenDisplay(NULL))) {
+	if (!(dpy = XOpenDisplay(NULL))) {
 		perror("XOpenDisplay() failed");
 		exit(1);
 	}
-	if (!(resm = XResourceManagerString(display))) {
-		perror("XResourceManagerString() failed");
-		exit(1);
-	}
-	db = XrmGetStringDatabase(resm);
-	for (p = resources; p < resources + sizeof(resources) / sizeof(resources[0]); p++)
-		resourceload(db, p->name, p->dst);
 
-	XCloseDisplay(display);
+	XrmInitialize();
+
+	resm = XResourceManagerString(dpy);
+	db = resm ? XrmGetStringDatabase(resm) : NULL;
+
+	/* palette (kept for optional palette fallback / future use) */
+	if (db) {
+		loadpalette(db);
+	} else {
+		for (int i = 0; i < TERM_COLS; i++) {
+			strncpy(termcols[i], xterm_default_cols[i], 8);
+			termcols[i][7] = '\0';
+		}
+	}
+
+	/* catppuccin-mono defaults (your requested header defaults) */
+	loadnamed_or_palette(db, "clr_bat_crt", clr_bat_crt, 1);   /* red */
+	loadnamed_or_palette(db, "clr_bat_low", clr_bat_low, 3);   /* yellow */
+	loadnamed_or_palette(db, "clr_bat_nrm", clr_bat_nrm, 15);  /* white */
+	loadnamed_or_palette(db, "clr_bat_chg", clr_bat_chg, 3);   /* yellow */
+
+	loadnamed_or_palette(db, "clr_bt",      clr_bt,      15);  /* white */
+	loadnamed_or_palette(db, "clr_date",    clr_date,    15);  /* white */
+
+	loadnamed_or_palette(db, "clr_net_nrm", clr_net_nrm, 15);  /* white */
+	loadnamed_or_palette(db, "clr_net_err", clr_net_err, 1);   /* red */
+
+	loadnamed_or_palette(db, "clr_krn_pkg", clr_krn_pkg, 4);   /* blue */
+	loadnamed_or_palette(db, "clr_krn_nrm", clr_krn_nrm, 15);  /* white */
+
+	loadnamed_or_palette(db, "clr_kbd",     clr_kbd,     15);  /* white */
+	loadnamed_or_palette(db, "clr_mem",     clr_mem,     15);  /* white */
+	loadnamed_or_palette(db, "clr_pwr",     clr_pwr,     1);   /* red */
+	loadnamed_or_palette(db, "clr_tim",     clr_tim,     15);  /* white */
+
+	loadnamed_or_palette(db, "clr_vol_nrm", clr_vol_nrm, 15);  /* white */
+	loadnamed_or_palette(db, "clr_vol_mut", clr_vol_mut, 1);   /* red */
+
+	XCloseDisplay(dpy);
 }
 
 static void
-printheader(char *path) {
+printheader(const char *path)
+{
 	FILE *fp;
 
 	if (!(fp = fopen(path, "w"))) {
@@ -95,15 +163,29 @@ printheader(char *path) {
 		exit(1);
 	}
 
-	fprintf(fp, "/* Autogenerated file */\n#ifndef COLORSCHEME_H\n#define COLORSCHEME_H\n\n");
+	fprintf(fp, "/* Autogenerated file */\n");
+	fprintf(fp, "/* theme: xresources */\n\n");
+	fprintf(fp, "#ifndef COLORSCHEME_H\n#define COLORSCHEME_H\n\n");
 
-	for (unsigned int i = 0; i < TERM_COLS; i++)
-		fprintf(fp, "#define CLR_%d \"^c%s^\"\n", i, termcols[i]);
+	fprintf(fp, "#define CLR_NRM     \"^d^\"\n");
+	fprintf(fp, "#define CLR_BAT_CRT \"^c%s^\"\n", clr_bat_crt);
+	fprintf(fp, "#define CLR_BAT_LOW \"^c%s^\"\n", clr_bat_low);
+	fprintf(fp, "#define CLR_BAT_NRM \"^c%s^\"\n", clr_bat_nrm);
+	fprintf(fp, "#define CLR_BAT_CHG \"^c%s^\"\n", clr_bat_chg);
+	fprintf(fp, "#define CLR_BT      \"^c%s^\"\n", clr_bt);
+	fprintf(fp, "#define CLR_DATE    \"^c%s^\"\n", clr_date);
+	fprintf(fp, "#define CLR_NET_NRM \"^c%s^\"\n", clr_net_nrm);
+	fprintf(fp, "#define CLR_NET_ERR \"^c%s^\"\n", clr_net_err);
+	fprintf(fp, "#define CLR_KRN_PKG \"^c%s^\"\n", clr_krn_pkg);
+	fprintf(fp, "#define CLR_KRN_NRM \"^c%s^\"\n", clr_krn_nrm);
+	fprintf(fp, "#define CLR_KBD     \"^c%s^\"\n", clr_kbd);
+	fprintf(fp, "#define CLR_MEM     \"^c%s^\"\n", clr_mem);
+	fprintf(fp, "#define CLR_PWR     \"^c%s^\"\n", clr_pwr);
+	fprintf(fp, "#define CLR_TIM     \"^c%s^\"\n", clr_tim);
+	fprintf(fp, "#define CLR_VOL_NRM \"^c%s^\"\n", clr_vol_nrm);
+	fprintf(fp, "#define CLR_VOL_MUT \"^c%s^\"\n", clr_vol_mut);
 
-	for (unsigned int i = 0; i < BG_COLS; i++)
-		fprintf(fp, "#define BG_%d \"^b%s^\"\n", i, bgcols[i]);
-
-	fprintf(fp, "#define NRM \"^d^\"\n\n#endif /* COLORSCHEME_H */\n");
+	fprintf(fp, "\n#endif /* COLORSCHEME_H */\n");
 	fclose(fp);
 }
 
@@ -111,8 +193,8 @@ int
 main(int argc, char *argv[])
 {
 	if (argc != 2) {
-		fprintf(stderr, "Invalid number of arguments. Usage: %s path_of_header\n", argv[0]);
-		exit(1);
+		fprintf(stderr, "Usage: %s path_of_header\n", argv[0]);
+		return 1;
 	}
 
 	loadxresources();
