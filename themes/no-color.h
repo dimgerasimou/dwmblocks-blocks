@@ -16,6 +16,7 @@
 #define CLR_KRN_NRM ""
 #define CLR_KBD     ""
 #define CLR_MEM     ""
+#define CLR_PWR     ""
 
 #define CLR_0 ""
 #define CLR_1 ""

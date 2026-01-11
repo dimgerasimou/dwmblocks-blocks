@@ -201,21 +201,19 @@ mainmenu(void)
 static void
 execbutton(void)
 {
-	char *env = NULL;
-
-	env = getenv("BLOCK_BUTTON");
-
-	if (!env || strcmp(env, "1"))
+	const char *env = getenv("BLOCK_BUTTON");
+	if (!env || !*env)
 		return;
 
-	mainmenu();
+	if (!strcmp(env, "1"))
+		mainmenu();	
 }
 
 int
 main(void)
 {
 	execbutton();
-	printf(CLR_1 BG_1" \n");
+	printf(CLR_PWR "\n" CLR_NRM);
 
 	return 0;
 }
