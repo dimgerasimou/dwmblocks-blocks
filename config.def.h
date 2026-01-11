@@ -104,6 +104,8 @@ const unsigned int show_update_count = 1;
  * ============================================================ */
 #ifdef KEYBOARD_C
 
+const unsigned int show_icon = 1;
+
 /* Keyboard layout switching script */
 const char *path_language_switch[] = { "$HOME", ".local", "bin", "dwm-xkbswitch", NULL };
 const char *args_language_switch[] = { "keyboard.sh", NULL };

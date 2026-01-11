@@ -40,7 +40,7 @@ getupdates(const char *cmd)
 static void
 execbutton(int *aur, int *pm)
 {
-	char *env;
+	const char *env;
 
 	env = getenv("BLOCK_BUTTON");
 	if (!env || !*env)

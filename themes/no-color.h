@@ -14,6 +14,7 @@
 #define CLR_NET_ERR ""
 #define CLR_KRN_PKG ""
 #define CLR_KRN_NRM ""
+#define CLR_KBD     ""
 
 #define CLR_0 ""
 #define CLR_1 ""
