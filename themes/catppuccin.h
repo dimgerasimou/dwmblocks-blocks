@@ -4,12 +4,14 @@
 #define COLORSCHEME_H
 
 #define CLR_NRM     "^d^"
-#define CLR_BAT_CRT "^c#F38BA8^" /* red    */
+#define CLR_BAT_CRT "^c#F38BA8^" /* red */
 #define CLR_BAT_LOW "^c#F9E2AF^" /* yellow */
-#define CLR_BAT_NRM "^c#A6E3A1^" /* green  */
+#define CLR_BAT_NRM "^c#A6E3A1^" /* green */
 #define CLR_BAT_CHG "^c#F9E2AF^" /* yellow */
-#define CLR_BT      "^c#89B4FA^" /* blue   */
-#define CLR_DATE    "^c#F38BA8^" /* red    */
+#define CLR_BT      "^c#89B4FA^" /* blue */
+#define CLR_DATE    "^c#F38BA8^" /* red */
+#define CLR_NET_NRM "^c#89DCEB^" /* cyan */
+#define CLR_NET_ERR "^c#EBA0AC^" /* red (highlight)*/
 
 #define CLR_0 "^c#45475A^"
 #define CLR_1 "^c#F38BA8^"

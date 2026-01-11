@@ -144,7 +144,7 @@ printcalendar(void)
 static void
 execbutton(void)
 {
-	char *env = getenv("BLOCK_BUTTON");
+	const char *env = getenv("BLOCK_BUTTON");
 	if (!env || !*env)
 		return;
 

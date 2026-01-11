@@ -13,16 +13,17 @@
 #include "config.h"
 
 const char *notif_icons[]  = {"x", "tdenetworkmanager", "wifi-radar"};
-const char *status_icons[] = {CLR_9"󰤮 ", CLR_6" ", CLR_6"󰤯 ", CLR_6"󰤟 ", CLR_6"󰤢 ", CLR_6"󰤥 ", CLR_6"󰤨 ", CLR_9"󰤫 "};
-const char *menu_string    = "󱛄 Toggle Wifi\t0\n󱛃 Connect to wifi\t1\n󱚾 TUI options\t2";
-
-/* structs */
-struct Ip {
-	NMIPConfig *cfg;
-	GPtrArray  *arr;
-	const char *add;
-	const char *gat;
+const char *status_icons[] = {
+	CLR_NET_ERR "󰤮 ", /* 0: no primary connection / unknown */
+	CLR_NET_NRM " ", /* 1: ethernet */
+	CLR_NET_NRM "󰤯 ", /* 2: wifi 0 */
+	CLR_NET_NRM "󰤟 ", /* 3: wifi 1 */
+	CLR_NET_NRM "󰤢 ", /* 4: wifi 2 */
+	CLR_NET_NRM "󰤥 ", /* 5: wifi 3 */
+	CLR_NET_NRM "󰤨 ", /* 6: wifi 4 */
+	CLR_NET_ERR "󰤫 "  /* 7: error */
 };
+const char *menu_string    = "󱛄 Toggle Wifi\t0\n󱛃 Connect to wifi\t1\n󱚾 TUI options\t2";
 
 /* function definitions */
 static void comapp(NMDevice *dev, GString *str);
@@ -34,30 +35,65 @@ static void printinfo(NMClient *c, const int ind);
 static void togglewifi(NMClient *client);
 static void wifiapp(NMDevice *dev, GString *str);
 
+static inline unsigned int
+clampstate(unsigned int s)
+{
+	const unsigned int n = (unsigned int)(sizeof(status_icons) / sizeof(status_icons[0]));
+	if (s >= n)
+		return 0;
+	return s;
+}
+
 static void
 comapp(NMDevice *dev, GString *str)
 {
 	NMActiveConnection *ac;
-	struct Ip ip4, ip6;
 	const char *mac;
 
 	ac = nm_device_get_active_connection(dev);
-
-	if (!ac) return;
+	if (!ac)
+		return;
 
 	mac = nm_device_get_hw_address(dev);
+	if (!mac || !*mac)
+		mac = "*unknown*";
 
-	ip4.cfg = nm_active_connection_get_ip4_config(ac);
-	ip4.arr = nm_ip_config_get_addresses(ip4.cfg);
-	ip4.add = nm_ip_address_get_address(g_ptr_array_index(ip4.arr, 0));
-	ip4.gat = nm_ip_config_get_gateway(ip4.cfg);
+	/* IPv4 */
+	const char *ip4_addr = NULL;
+	const char *ip4_gw   = NULL;
+	NMIPConfig *ip4_cfg  = nm_active_connection_get_ip4_config(ac);
+	if (ip4_cfg) {
+		GPtrArray *a = nm_ip_config_get_addresses(ip4_cfg);
+		if (a && a->len >= 1) {
+			NMIPAddress *ip = g_ptr_array_index(a, 0);
+			if (ip)
+				ip4_addr = nm_ip_address_get_address(ip);
+		}
+		ip4_gw = nm_ip_config_get_gateway(ip4_cfg);
+	}
 
-	ip6.cfg = nm_active_connection_get_ip6_config(ac);
-	ip6.arr = nm_ip_config_get_addresses(ip6.cfg);
-	ip6.add = nm_ip_address_get_address(g_ptr_array_index(ip6.arr, 0));
+	/* IPv6 */
+	const char *ip6_addr = NULL;
+	NMIPConfig *ip6_cfg  = nm_active_connection_get_ip6_config(ac);
+	if (ip6_cfg) {
+		GPtrArray *a = nm_ip_config_get_addresses(ip6_cfg);
+		if (a && a->len >= 1) {
+			NMIPAddress *ip = g_ptr_array_index(a, 0);
+			if (ip)
+				ip6_addr = nm_ip_address_get_address(ip);
+		}
+	}
 
-	g_string_append_printf(str, "MAC:  %s\nIPv4: %s\nGate: %s\nIPv6: %s\n\n",
-	                       mac, ip4.add, ip4.gat, ip6.add);
+	if (!ip4_addr || !*ip4_addr) ip4_addr = "*none*";
+	if (!ip4_gw   || !*ip4_gw)   ip4_gw   = "*none*";
+	if (!ip6_addr || !*ip6_addr) ip6_addr = "*none*";
+
+	g_string_append_printf(str,
+		"MAC:  %s\n"
+		"IPv4: %s\n"
+		"Gate: %s\n"
+		"IPv6: %s\n\n",
+		mac, ip4_addr, ip4_gw, ip6_addr);
 }
 
 static void
@@ -66,7 +102,6 @@ ethapp(NMDevice *dev, GString *str)
 	NMActiveConnection *ac;
 
 	ac = nm_device_get_active_connection(dev);
-
 	if (!ac)
 		g_string_append(str, "Ethernet: Disconnected\n\n");
 	else
@@ -76,9 +111,8 @@ ethapp(NMDevice *dev, GString *str)
 static void
 execbutton(NMClient *c, int icind)
 {
-	char *env;
-
-	if (!(env = getenv("BLOCK_BUTTON")))
+	char *env = getenv("BLOCK_BUTTON");
+	if (!env || !*env)
 		return;
 
 	switch (atoi(env)) {
@@ -87,26 +121,24 @@ execbutton(NMClient *c, int icind)
 		break;
 
 	case 3:
-		switch(getxmenuopt(menu_string, "dwmblocks-internet")) {
+		switch (getxmenuopt(menu_string, "dwmblocks-internet")) {
 		case 0:
 			togglewifi(c);
 			break;
-		
-		case 1:
-		{
-			char *path;
-			
-			path = getpath((char**) path_wifi_connect);
-			forkexecv(path, (char**) args_wifi_connect, "dwmblocks-internet");
 
-			free(path);
+		case 1: {
+			char *path = getpath((char **)path_wifi_connect);
+			if (path) {
+				forkexecv(path, (char **)args_wifi_connect, "dwmblocks-internet");
+				free(path);
+			}
 			break;
 		}
 
 		case 2:
-			forkexecvp((char**) args_tui_internet, "dwmblocks-internet");
+			forkexecvp((char **)args_tui_internet, "dwmblocks-internet");
 			break;
-		
+
 		default:
 			break;
 		}
@@ -127,40 +159,42 @@ getactive(NMClient *c)
 	NMDeviceWifi *dev;
 	const char *type;
 
-	if (!(ac = nm_client_get_primary_connection(c)))
+	ac = nm_client_get_primary_connection(c);
+	if (!ac)
 		return 0;
-	
+
 	type = nm_active_connection_get_connection_type(ac);
+	if (!type)
+		return 0;
 
 	if (!strcmp(type, "802-3-ethernet"))
 		return 1;
 
 	if (!strcmp(type, "802-11-wireless")) {
 		acdev = nm_active_connection_get_devices(ac);
-
 		if (!acdev || acdev->len < 1) {
 			logwrite("Wifi active devices less than 1", NULL, LOG_INFO, "dwmblocks-internet");
 			return 7;
 		}
 
 		dev = NM_DEVICE_WIFI(g_ptr_array_index(acdev, 0));
-
 		if (!dev) {
 			logwrite("Could not fetch wifi device", NULL, LOG_INFO, "dwmblocks-internet");
 			return 7;
 		}
 
 		ap = nm_device_wifi_get_active_access_point(dev);
-
 		if (!ap) {
 			logwrite("Could not fetch active access point", NULL, LOG_INFO, "dwmblocks-internet");
 			return 7;
 		}
 
+		/* map 0..100 -> 0..4 */
 		state = (nm_access_point_get_strength(ap) / 20);
 		state = state > 4 ? 4 : state;
-		return (2 + state);
+		return (2 + state); /* 2..6 */
 	}
+
 	return 0;
 }
 
@@ -169,9 +203,17 @@ nminit(NMClient **c)
 {
 	GError *error = NULL;
 
+	if (!c)
+		return;
+
 	*c = nm_client_new(NULL, &error);
-	if (error)
+
+	if (error) {
 		logwrite("Error initializing NetworkManager client", error->message, LOG_WARN, "dwmblocks-internet");
+		g_error_free(error);
+	}
+
+	/* If nm_client_new failed, *c will be NULL. Caller already checks. */
 }
 
 static void
@@ -183,43 +225,51 @@ printinfo(NMClient *c, const int ind)
 	GString *str;
 
 	devarr = nm_client_get_devices(c);
-	icind = ind > 2 ? 2 : ind;
+	icind = (unsigned int)(ind > 2 ? 2 : ind);
 
 	if (!devarr) {
-		notify("Network Devices Info", "No network devices detected", (char*) notif_icons[0], NOTIFY_URGENCY_NORMAL, 1);
+		notify("Network Devices Info", "No network devices detected", (char *)notif_icons[0],
+		       NOTIFY_URGENCY_NORMAL, 1);
 		return;
 	}
 
 	str = g_string_new("");
+	if (!str) {
+		notify("Network Devices Info", "Out of memory", (char *)notif_icons[0],
+		       NOTIFY_URGENCY_NORMAL, 1);
+		return;
+	}
 
-	for (int i = 0; i < (int) devarr->len; i++) {
+	for (int i = 0; i < (int)devarr->len; i++) {
 		dev = g_ptr_array_index(devarr, i);
-
 		if (!dev) {
 			logwrite("Failed to fetch a device", NULL, LOG_INFO, "dwmblocks-internet");
-			return;
+			continue;
 		}
 
 		int type = nm_device_get_device_type(dev);
 		switch (type) {
-			case NM_DEVICE_TYPE_ETHERNET:
-				ethapp(dev, str);
-				goto INFO;
+		case NM_DEVICE_TYPE_ETHERNET:
+			ethapp(dev, str);
+			comapp(dev, str);
+			break;
 
-			case NM_DEVICE_TYPE_WIFI:
-				wifiapp(dev, str);
-			INFO:
-				comapp(dev, str);
+		case NM_DEVICE_TYPE_WIFI:
+			wifiapp(dev, str);
+			comapp(dev, str);
+			break;
 
-			default:
-				break;
+		default:
+			break;
 		}
 	}
 
 	if (str->len <= 1)
-		notify("Network Devices Info", "No network devices detected", (char*) notif_icons[icind], NOTIFY_URGENCY_NORMAL, 1);
+		notify("Network Devices Info", "No network devices detected", (char *)notif_icons[icind],
+		       NOTIFY_URGENCY_NORMAL, 1);
 	else
-		notify("Network Devices Info", str->str, (char*) notif_icons[icind], NOTIFY_URGENCY_NORMAL, 1);
+		notify("Network Devices Info", str->str, (char *)notif_icons[icind],
+		       NOTIFY_URGENCY_NORMAL, 1);
 
 	g_string_free(str, TRUE);
 }
@@ -227,6 +277,7 @@ printinfo(NMClient *c, const int ind)
 static void
 togglewifi(NMClient *client)
 {
+	/* May fail due to permissions/polkit; we at least report what we observe after the call. */
 	gboolean current = nm_client_wireless_get_enabled(client);
 	nm_client_wireless_set_enabled(client, !current);
 
@@ -239,49 +290,68 @@ wifiapp(NMDevice *dev, GString *str)
 {
 	NMActiveConnection *ac;
 	NMAccessPoint *ap;
-	GString *ssidstr;
-	guint32 freq;
 	GBytes *ssid;
+	guint32 freq_mhz;
 	guint8 stren;
 
-	if (!(ac = nm_device_get_active_connection(dev))) {
+	ac = nm_device_get_active_connection(dev);
+	if (!ac) {
 		g_string_append(str, "Wifi: Disconnected\n\n");
 		return;
 	}
 
-	ap    = nm_device_wifi_get_active_access_point(NM_DEVICE_WIFI(dev));
-	ssid  = nm_access_point_get_ssid(ap);
-	freq  = nm_access_point_get_frequency(ap);
-	stren = nm_access_point_get_strength(ap);
+	ap = nm_device_wifi_get_active_access_point(NM_DEVICE_WIFI(dev));
+	if (!ap) {
+		g_string_append(str, "Wifi: Connected (AP unknown)\n\n");
+		return;
+	}
 
-	if (ssid)
-		ssidstr = g_string_new(nm_utils_ssid_to_utf8(g_bytes_get_data(ssid, NULL),
-		                       g_bytes_get_size(ssid)));
-	else
-		ssidstr = g_string_new("*hidden_network*");
+	ssid     = nm_access_point_get_ssid(ap);
+	freq_mhz = nm_access_point_get_frequency(ap); /* MHz */
+	stren    = nm_access_point_get_strength(ap);
 
-	g_string_append_printf(str, "Wifi\nSSID: %s\nStrn: %d%% | Freq: %d GHz\n",
-	                       ssidstr->str, stren, freq);
+	const char *ssid_disp = "*hidden_network*";
+	char *ssid_utf8 = NULL;
 
-	g_string_free(ssidstr, TRUE);
+	if (ssid) {
+		ssid_utf8 = nm_utils_ssid_to_utf8(g_bytes_get_data(ssid, NULL),
+		                                 g_bytes_get_size(ssid));
+		if (ssid_utf8 && *ssid_utf8)
+			ssid_disp = ssid_utf8;
+	}
+
+	/* Convert MHz -> GHz for display */
+	double freq_ghz = freq_mhz > 0 ? (freq_mhz / 1000.0) : 0.0;
+
+	g_string_append_printf(str,
+		"Wifi\n"
+		"SSID: %s\n"
+		"Strn: %d%% | Freq: %.1f GHz\n",
+		ssid_disp, (int)stren, freq_ghz);
+
+	if (ssid_utf8)
+		g_free(ssid_utf8);
 }
 
 int
 main(void)
 {
-	unsigned int state;
-	NMClient *client;
+	unsigned int state = 0;
+	NMClient *client = NULL;
 
-	state = 0;
 	nminit(&client);
 
 	if (client) {
 		state = getactive(client);
-		execbutton(client, state);
+		state = clampstate(state);
+		execbutton(client, (int)state);
 		g_object_unref(client);
+	} else {
+		state = 7;
 	}
 
-	printf(BG_1"%s\n", status_icons[state]);
+	state = clampstate(state);
+	printf("%s\n" CLR_NRM, status_icons[state]);
 
 	return 0;
 }

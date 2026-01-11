@@ -10,6 +10,8 @@
 #define CLR_BAT_CHG ""
 #define CLR_BT      ""
 #define CLR_DATE    ""
+#define CLR_NET_NRM ""
+#define CLR_NET_ERR ""
 
 #define CLR_0 ""
 #define CLR_1 ""
