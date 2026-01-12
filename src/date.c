@@ -177,7 +177,7 @@ main(void)
 		printf(CLR_DATE" ");
 	}
 
-	printf(CLR_DATE "%02d/%02d\n" CLR_NRM, lt->tm_mday, lt->tm_mon + 1);
+	printf(CLR_DATE "%02d/%02d" CLR_NRM "\n", lt->tm_mday, lt->tm_mon + 1);
 
 	return 0;
 }

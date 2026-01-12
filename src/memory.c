@@ -79,6 +79,6 @@ main(void)
 	if (show_icon)
 		printf(CLR_MEM " ");
 
-	printf(CLR_MEM "%.1fGiB\n" CLR_NRM, (double)used_kib / 1024.0 / 1024.0);
+	printf(CLR_MEM "%.1fGiB" CLR_NRM "\n", (double)used_kib / 1024.0 / 1024.0);
 	return 0;
 }

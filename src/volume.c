@@ -307,7 +307,7 @@ main(void)
 		c[sizeof(c) - 1] = '\0';
 	}
 
-	printf("%s%s%s\n" CLR_NRM, c, icon, v);
+	printf("%s%s%s" CLR_NRM "\n", c, icon, v);
 
 	return 0;
 }

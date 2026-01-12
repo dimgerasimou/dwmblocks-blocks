@@ -206,14 +206,14 @@ execbutton(void)
 		return;
 
 	if (!strcmp(env, "1"))
-		mainmenu();	
+		mainmenu();
 }
 
 int
 main(void)
 {
 	execbutton();
-	printf(CLR_PWR "\n" CLR_NRM);
+	printf(CLR_PWR " " CLR_NRM "\n");
 
 	return 0;
 }

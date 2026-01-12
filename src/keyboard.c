@@ -123,7 +123,7 @@ main(void)
 
 	if (show_icon)
 		printf(CLR_KBD " ");
-	printf(CLR_KBD "%s\n" CLR_NRM, layout);
+	printf(CLR_KBD "%s" CLR_NRM "\n", layout);
 
 cleanup:
 	free(layout);

@@ -351,7 +351,7 @@ main(void)
 	}
 
 	state = clampstate(state);
-	printf("%s\n" CLR_NRM, status_icons[state]);
+	printf("%s" CLR_NRM "\n", status_icons[state]);
 
 	return 0;
 }

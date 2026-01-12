@@ -127,7 +127,7 @@ main(void)
 	if (show_release && release && *release)
 		printf(" %s", release);
 
-	printf("\n" CLR_NRM);
+	printf(CLR_NRM "\n");
 
 	free(release);
 	return 0;

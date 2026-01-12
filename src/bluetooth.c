@@ -205,6 +205,6 @@ main(void)
 		state = 0;
 	}
 
-	printf(CLR_BT "%s\n" CLR_NRM, icons_bt[state ? 1 : 0]);
+	printf(CLR_BT "%s" CLR_NRM "\n", icons_bt[state ? 1 : 0]);
 	return EXIT_SUCCESS;
 }

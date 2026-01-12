@@ -21,6 +21,6 @@ main(void)
 	if (show_icon)
 		printf(CLR_TIM " ");
 
-	printf(CLR_TIM "%.2d:%.2d\n" CLR_NRM, lt->tm_hour, lt->tm_min);
+	printf(CLR_TIM "%.2d:%.2d" CLR_NRM "\n", lt->tm_hour, lt->tm_min);
 	return 0;
 }

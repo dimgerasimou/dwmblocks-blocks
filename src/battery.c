@@ -236,7 +236,7 @@ main(void)
 	else
 		icon = icons_battery[battery_icon_index(capacity)];
 
-	printf("%s\n" CLR_NRM, icon);
+	printf("%s" CLR_NRM "\n", icon);
 
 	free(status);
 	return 0;
