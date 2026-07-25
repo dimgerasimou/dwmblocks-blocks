@@ -13,6 +13,23 @@ typedef enum {
 	LOG_FATAL,
 } log_level;
 
+void set_name(const char *name);
+const char *get_name(void);
+
+/*
+ * Prints formated message to stderr and exits.
+ * If last char is ':', prints strerror with set errno.
+ */
+_Noreturn void die(const char *fmt, ...);
+
+/*
+ * Prints formated message to stderr and returns.
+ * If last char is ':', prints strerror with set errno.
+ */
+void warn(const char *fmt, ...);
+
+void *emalloc(const size_t size);
+
 /*
  * Forks and executes given command.
  */

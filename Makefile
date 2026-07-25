@@ -7,7 +7,7 @@ PREFIX      ?= $(HOME)/.local/bin/dwmblocks
 CC          := cc
 PKG_CFLAGS  := $(shell pkg-config --cflags libnotify libnm libpulse dbus-1 glib-2.0)
 PKG_LIBS    := $(shell pkg-config --libs libnotify libnm libpulse dbus-1 glib-2.0)
-CFLAGS      := -Wall -Wextra -Werror -Wno-deprecated-declarations -I./src/include -I. -Os $(PKG_CFLAGS)
+CFLAGS      := -Wall -Wextra -Wno-deprecated-declarations -I./src/include -I. -Os $(PKG_CFLAGS)
 LDFLAGS     := -lm -lX11 -lxkbfile $(PKG_LIBS)
 
 # Directory structure
@@ -16,15 +16,10 @@ BUILD_DIR   := build
 BIN_DIR     := $(BUILD_DIR)/bin
 OBJ_DIR     := $(BUILD_DIR)/obj
 INCLUDE     := src/include
-THEMES_DIR  := themes
-
-# Theme selection (can override: make THEME=gruvbox)
-THEME       ?= catppuccin
-THEME_FILE  := $(THEMES_DIR)/$(THEME).h
 
 # Source files
-UTILS_SRC   := $(SRC_DIR)/utils.c
-UTILS_OBJ   := $(OBJ_DIR)/utils.o
+UTILS_SRC   := $(SRC_DIR)/utils.c $(SRC_DIR)/colors.c
+UTILS_OBJ   := $(OBJ_DIR)/utils.o $(OBJ_DIR)/colors.o
 
 # Block configuration - comment out blocks you don't need
 BLOCKS      := time \
@@ -71,142 +66,49 @@ GEN = $(call MSG,GEN,$(COLOR_MAGENTA),$(COLOR_MAGENTA),$(1))
 RM  = $(call MSG,RM,$(COLOR_RED),$(COLOR_RED),$(1))
 
 # Phony targets
-.PHONY: all clean install uninstall help theme list-themes rebuild save-theme check-theme
+.PHONY: all clean install uninstall
 
 # Prevent deletion of intermediate files
 .SECONDARY: $(BLOCK_OBJS)
 
 # Default target
-all: check-theme $(BINARIES)
-
-# Check if theme has changed and regenerate colorscheme if needed
-check-theme:
-	@mkdir -p $(INCLUDE)
-	@CURRENT_THEME=""; \
-	if [ -f "$(INCLUDE)/.current_theme" ]; then \
-		CURRENT_THEME=$$(cat "$(INCLUDE)/.current_theme"); \
-	fi; \
-	if [ "$$CURRENT_THEME" != "$(THEME)" ]; then \
-		$(call WARN,Theme changed: '$$CURRENT_THEME' -> '$(THEME)'; will regenerate colorscheme) ; \
-		rm -f "$(INCLUDE)/colorscheme.h"; \
-		$(ECHO) "$(THEME)" > "$(INCLUDE)/.current_theme"; \
-	else \
-		$(call INFO,Theme unchanged: '$(THEME)') ; \
-	fi
-
-# Help target
-help:
-	@$(ECHO) ""
-	@$(ECHO) "$(COLOR_BOLD)$(COLOR_BLUE)dwmblocks-blocks build system$(COLOR_RESET)"
-	@$(ECHO) ""
-	@$(ECHO) "$(COLOR_BOLD)Targets:$(COLOR_RESET)"
-	@$(ECHO) "  $(COLOR_CYAN)all$(COLOR_RESET)           Build all blocks (default)"
-	@$(ECHO) "  $(COLOR_CYAN)clean$(COLOR_RESET)         Remove build artifacts"
-	@$(ECHO) "  $(COLOR_CYAN)install$(COLOR_RESET)       Install blocks to $(PREFIX)"
-	@$(ECHO) "  $(COLOR_CYAN)uninstall$(COLOR_RESET)     Remove installed blocks"
-	@$(ECHO) "  $(COLOR_CYAN)rebuild$(COLOR_RESET)       Clean and rebuild everything"
-	@$(ECHO) "  $(COLOR_CYAN)theme$(COLOR_RESET)         Force regenerate colorscheme from Xresources"
-	@$(ECHO) "  $(COLOR_CYAN)list-themes$(COLOR_RESET)   Show available themes"
-	@$(ECHO) "  $(COLOR_CYAN)save-theme$(COLOR_RESET)    Save current Xresources as theme (NAME=...)"
-	@$(ECHO) ""
-	@$(ECHO) "$(COLOR_BOLD)Options:$(COLOR_RESET)"
-	@$(ECHO) "  PREFIX=<path>        Installation directory"
-	@$(ECHO) "  THEME=<name>         Color theme (default: $(THEME))"
-	@$(ECHO) "  BLOCKS='block1 ...'  Build only specified blocks"
-	@$(ECHO) ""
-	@$(ECHO) "$(COLOR_BOLD)Examples:$(COLOR_RESET)"
-	@$(ECHO) "  make THEME=gruvbox"
-	@$(ECHO) "  make save-theme NAME=mytheme"
-	@$(ECHO) "  make BLOCKS='battery volume'"
-	@$(ECHO) "  make clean install PREFIX=/usr/local/bin/dwmblocks"
-	@$(ECHO) ""
-
-# List available themes
-list-themes:
-	@$(call INFO,Available themes in '$(THEMES_DIR)') ; \
-	if [ -d "$(THEMES_DIR)" ]; then \
-		for theme in $(THEMES_DIR)/*.h; do \
-			[ -f "$$theme" ] && $(ECHO) "  $(COLOR_GREEN)-$(COLOR_RESET) $$(basename "$$theme" | sed 's/\.h//')"; \
-		done; \
-	else \
-		$(ECHO) "  $(COLOR_YELLOW)(no themes directory found)$(COLOR_RESET)"; \
-	fi
-	@$(ECHO) ""
-	@$(call INFO,Current theme: $(THEME)) ; \
-	if [ ! -f "$(THEME_FILE)" ]; then \
-		$(call WARN,Theme file not found; will generate from Xresources) ; \
-	fi
+all: $(BINARIES)
 
 # Link binaries from object files
-$(BIN_DIR)/%: $(OBJ_DIR)/%.o $(UTILS_OBJ) $(INCLUDE)/colorscheme.h config.h
+$(BIN_DIR)/%: $(OBJ_DIR)/%.o $(UTILS_OBJ) config.h
 	@mkdir -p $(BIN_DIR)
 	@$(call DO,Link $@)
 	@$(CC) -o $@ $< $(UTILS_OBJ) $(CFLAGS) $(LDFLAGS)
 	@$(call OK,Built $@)
 
 # Compile block object files
-$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c $(INCLUDE)/colorscheme.h config.h
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c config.h
 	@mkdir -p $(OBJ_DIR)
 	@$(call DO,CC $<)
 	@$(CC) -c $< -o $@ $(CFLAGS)
 
 # Compile utils object file
-$(UTILS_OBJ): $(UTILS_SRC) $(INCLUDE)/utils.h config.h
+$(OBJ_DIR)/utils.o: $(SRC_DIR)/utils.c $(INCLUDE)/utils.h config.h
 	@mkdir -p $(OBJ_DIR)
 	@$(call DO,CC $<)
 	@$(CC) -c $< -o $@ $(CFLAGS)
 
-# Generate or copy colorscheme
-$(INCLUDE)/colorscheme.h:
-	@mkdir -p $(INCLUDE) $(BIN_DIR)
-	@if [ -f "$(THEME_FILE)" ]; then \
-		$(call GEN,Use theme '$(THEME)' ($(THEME_FILE))) ; \
-		rm -f "$@"; \
-		cp "$(THEME_FILE)" "$@"; \
-		$(call OK,Generated $@) ; \
-	else \
-		$(call WARN,Theme '$(THEME)' not found; generating from Xresources) ; \
-		rm -f "$@"; \
-		$(CC) -o "$(BIN_DIR)/loadresources" "$(SRC_DIR)/loadresources.c" -lX11; \
-		"$(BIN_DIR)/loadresources" "$@"; \
-		$(call OK,Generated $@ from Xresources) ; \
-	fi
+# Compile colors object file
+$(OBJ_DIR)/colors.o: $(SRC_DIR)/colors.c $(INCLUDE)/colors.h $(INCLUDE)/utils.h config.h
+	@mkdir -p $(OBJ_DIR)
+	@$(call DO,CC $<)
+	@$(CC) -c $< -o $@ $(CFLAGS)
 
 config.h:
 	@$(call GEN,Install default config.h from config.def.h)
 	@cp config.def.h config.h
 	@$(call OK,Wrote config.h)
 
-# Force regenerate colorscheme from Xresources
-theme: $(SRC_DIR)/loadresources.c
-	@$(call GEN,Regenerating colorscheme from Xresources)
-	@mkdir -p $(BIN_DIR) $(INCLUDE)
-	@$(CC) -o $(BIN_DIR)/loadresources $< -lX11
-	@$(BIN_DIR)/loadresources $(INCLUDE)/colorscheme.h
-	@$(call OK,Colorscheme generated)
-
-# Save current Xresources as a theme
-save-theme: $(SRC_DIR)/loadresources.c
-	@if [ -z "$(NAME)" ]; then \
-		$(call ERR,Usage: make save-theme NAME=mytheme) ; \
-		exit 1; \
-	fi
-	@$(call GEN,Saving Xresources theme as '$(NAME)')
-	@mkdir -p $(THEMES_DIR) $(BIN_DIR)
-	@$(CC) -o $(BIN_DIR)/loadresources $< -lX11
-	@$(BIN_DIR)/loadresources $(THEMES_DIR)/$(NAME).h
-	@$(call OK,Theme saved: $(THEMES_DIR)/$(NAME).h)
-
 # Clean build artifacts
 clean:
 	@$(call RM,Remove build directory and generated theme state)
 	@rm -rf $(BUILD_DIR)
-	@rm -f $(INCLUDE)/.current_theme
-	@rm -f $(INCLUDE)/colorscheme.h
 	@$(call OK,Clean complete)
-
-# Full rebuild
-rebuild: clean all
 
 # Install binaries
 install: all
@@ -231,10 +133,6 @@ uninstall:
 		fi; \
 	done
 	@$(call OK,Uninstall complete)
-
-# Print variables (for debugging the Makefile)
-print-%:
-	@$(call INFO,$* = $($*))
 
 # Dependency tracking for header changes
 -include $(BLOCK_OBJS:.o=.d)

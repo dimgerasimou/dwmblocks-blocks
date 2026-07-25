@@ -9,7 +9,7 @@
 #define KERNEL_C
 #define BUF_SIZE 64
 
-#include "colorscheme.h"
+#include "colors.h"
 #include "utils.h"
 #include "config.h"
 
@@ -92,6 +92,11 @@ main(void)
 	int aur = -1;
 	int pm  = -1;
 
+	set_name("dwmblocks-kernel");
+
+	const enum Color def_cols[] = {clr_krn_pkg, clr_krn_nrm};
+	clr_init(def_cols, 2);
+
 	execbutton(&aur, &pm);
 
 	if (aur == -1)
@@ -117,12 +122,12 @@ main(void)
 	}
 
 	if ((aur + pm) > 0) {
-		printf(CLR_KRN_PKG "󰏖 ");
+		printf("%s󰏖 ", clr_get(clr_krn_pkg));
 		if (show_update_count)
 			printf("%d ", aur + pm);
 	}
 
-	printf(CLR_KRN_NRM "");
+	printf("%s", clr_get(clr_krn_nrm));
 
 	if (show_release && release && *release)
 		printf(" %s", release);

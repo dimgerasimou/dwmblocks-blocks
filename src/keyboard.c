@@ -8,12 +8,12 @@
 
 #define KEYBOARD_C
 
-#include "colorscheme.h"
+#include "colors.h"
 #include "utils.h"
 #include "config.h"
 
 static void
-XkbRF_FreeVarDefs(XkbRF_VarDefsRec *var_defs)
+XkbRF_FreeVarDefs_Local(XkbRF_VarDefsRec *var_defs)
 {
 	if (!var_defs)
 		return;
@@ -99,6 +99,9 @@ main(void)
 	XkbRF_VarDefsRec vd = {0};
 	char *layout = NULL;
 
+	set_name("dwmblocks-keyboard");
+	const enum Color def_cols[] = {clr_kbd};
+	clr_init(def_cols, 1);
 	execbutton();
 
 	dpy = XOpenDisplay(NULL);
@@ -121,13 +124,15 @@ main(void)
 		goto cleanup;
 	}
 
+	printf("%s", clr_get(clr_kbd));
+
 	if (show_icon)
-		printf(CLR_KBD " ");
-	printf(CLR_KBD "%s" CLR_NRM "\n", layout);
+		printf(" ");
+	printf("%s" CLR_NRM "\n", layout);
 
 cleanup:
 	free(layout);
-	XkbRF_FreeVarDefs(&vd);
+	XkbRF_FreeVarDefs_Local(&vd);
 	if (dpy)
 		XCloseDisplay(dpy);
 

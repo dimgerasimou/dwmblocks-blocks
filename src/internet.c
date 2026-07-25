@@ -8,21 +8,33 @@
 
 #define INTERNET_C
 
-#include "colorscheme.h"
+#include "colors.h"
 #include "utils.h"
 #include "config.h"
 
 const char *notif_icons[]  = {"x", "tdenetworkmanager", "wifi-radar"};
 const char *status_icons[] = {
-	CLR_NET_ERR "󰤮 ", /* 0: no primary connection / unknown */
-	CLR_NET_NRM " ", /* 1: ethernet */
-	CLR_NET_NRM "󰤯 ", /* 2: wifi 0 */
-	CLR_NET_NRM "󰤟 ", /* 3: wifi 1 */
-	CLR_NET_NRM "󰤢 ", /* 4: wifi 2 */
-	CLR_NET_NRM "󰤥 ", /* 5: wifi 3 */
-	CLR_NET_NRM "󰤨 ", /* 6: wifi 4 */
-	CLR_NET_ERR "󰤫 "  /* 7: error */
+	"󰤮 ", /* 0: no primary connection / unknown */
+	" ", /* 1: ethernet */
+	"󰤯 ", /* 2: wifi 0 */
+	"󰤟 ", /* 3: wifi 1 */
+	"󰤢 ", /* 4: wifi 2 */
+	"󰤥 ", /* 5: wifi 3 */
+	"󰤨 ", /* 6: wifi 4 */
+	"󰤫 "  /* 7: error */
 };
+
+const int status_icons_clr[] = {
+	clr_net_err,
+	clr_net_nrm,
+	clr_net_nrm,
+	clr_net_nrm,
+	clr_net_nrm,
+	clr_net_nrm,
+	clr_net_nrm,
+	clr_net_err
+};
+
 const char *menu_string    = "󱛄 Toggle Wifi\t0\n󱛃 Connect to wifi\t1\n󱚾 TUI options\t2";
 
 /* function definitions */
@@ -339,6 +351,11 @@ main(void)
 	unsigned int state = 0;
 	NMClient *client = NULL;
 
+	set_name("dwmblocks-internet");
+
+	const enum Color def_cols[] = {clr_net_err, clr_net_nrm};
+	clr_init(def_cols, 2);
+
 	nminit(&client);
 
 	if (client) {
@@ -351,7 +368,7 @@ main(void)
 	}
 
 	state = clampstate(state);
-	printf("%s" CLR_NRM "\n", status_icons[state]);
+	printf("%s%s" CLR_NRM "\n", clr_get(status_icons_clr[state]), status_icons[state]);
 
 	return 0;
 }

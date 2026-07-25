@@ -9,7 +9,7 @@
 #define DATE_C
 #define BUFFER_SIZE 64
 
-#include "colorscheme.h"
+#include "colors.h"
 #include "utils.h"
 #include "config.h"
 
@@ -168,16 +168,22 @@ main(void)
 	struct tm *lt = NULL;
 	time_t     ct = 0;
 
+	set_name("dwmblocks-date");
+
+	const enum Color def_cols[] = {clr_date};
+	clr_init(def_cols, 1);
+
 	execbutton();
 	
 	ct = time(NULL);
 	lt = localtime(&ct);
 
+	printf("%s", clr_get(clr_date));
 	if (show_icon) {
-		printf(CLR_DATE" ");
+		printf(" ");
 	}
 
-	printf(CLR_DATE "%02d/%02d" CLR_NRM "\n", lt->tm_mday, lt->tm_mon + 1);
+	printf("%02d/%02d" CLR_NRM "\n", lt->tm_mday, lt->tm_mon + 1);
 
 	return 0;
 }

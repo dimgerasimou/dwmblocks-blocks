@@ -18,6 +18,65 @@
 #include "utils.h"
 #include "config.h"
 
+static const char *program_name;
+
+void
+set_name(const char *name)
+{
+	program_name = name;
+}
+
+const char *
+get_name(void)
+{
+	return program_name;
+}
+
+void
+die(const char *fmt, ...)
+{
+	va_list ap;
+	int saved_errno = errno;
+
+	fprintf(stderr, "%s: ", program_name);
+
+	va_start(ap, fmt);
+	vfprintf(stderr, fmt, ap);
+	va_end(ap);
+
+	if (fmt[0] && fmt[strlen(fmt) - 1] == ':')
+		fprintf(stderr, " %s", strerror(saved_errno));
+	fputc('\n', stderr);
+
+	exit(1);
+}
+
+void
+warn(const char *fmt, ...)
+{
+	va_list ap;
+	int saved_errno = errno;
+
+	fprintf(stderr, "%s: ", program_name);
+
+	va_start(ap, fmt);
+	vfprintf(stderr, fmt, ap);
+	va_end(ap);
+
+	if (fmt[0] && fmt[strlen(fmt) - 1] == ':')
+		fprintf(stderr, " %s", strerror(saved_errno));
+	fputc('\n', stderr);
+}
+
+void *
+emalloc(const size_t size)
+{
+	void *p;
+
+	if ((p = malloc(size)) == NULL)
+		die("malloc:");
+	return p;
+}
 
 /* file specific functions */
 

@@ -8,7 +8,7 @@
 #define MEMORY_C
 #define BUF_SIZE 256
 
-#include "colorscheme.h"
+#include "colors.h"
 #include "utils.h"
 #include "config.h"
 
@@ -72,13 +72,18 @@ main(void)
 {
 	long used_kib;
 
+	set_name("dwmblocks-memory");
+	const enum Color def_cols[] = {clr_mem};
+	clr_init(def_cols, 1);
+
 	execbutton();
 
 	used_kib = getmemoryusage_kib();
 
+	printf("%s", clr_get(clr_mem));
 	if (show_icon)
-		printf(CLR_MEM " ");
+		printf(" ");
 
-	printf(CLR_MEM "%.1fGiB" CLR_NRM "\n", (double)used_kib / 1024.0 / 1024.0);
+	printf("%.1fGiB" CLR_NRM "\n", (double)used_kib / 1024.0 / 1024.0);
 	return 0;
 }

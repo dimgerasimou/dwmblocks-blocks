@@ -107,8 +107,8 @@ const unsigned int show_update_count = 1;
 const unsigned int show_icon = 1;
 
 /* Keyboard layout switching script */
-const char *path_language_switch[] = { "$HOME", ".local", "bin", "dwm-xkbswitch", NULL };
-const char *args_language_switch[] = { "keyboard.sh", NULL };
+const char *path_language_switch[] = { "$HOME", ".local", "bin", "dwm-xkbnext", NULL };
+const char *args_language_switch[] = { "dwm-xkbnext", NULL };
 
 #endif
 
@@ -176,10 +176,10 @@ const unsigned int volume_padding = 1;
 const char *args_eqalizer[]        = {"easyeffects", NULL};
 
 /* Volume control script and arguments */
-const char *args_volume_increase[] = {"audiocontrol", "sink", "increase", NULL};
-const char *args_volume_decrase[]  = {"audiocontrol", "sink", "decrease", NULL};
-const char *args_volume_mute[]     = {"audiocontrol", "sink", "mute", NULL};
-const char *path_volume_control[]  = {"$HOME", ".local", "bin", "dwm-audio-control", NULL};
+const char *args_volume_increase[] = {"dwm-audio", "up", NULL};
+const char *args_volume_decrase[]  = {"dwm-audio", "down", NULL};
+const char *args_volume_mute[]     = {"dwm-audio", "mute", NULL};
+const char *path_volume_control[]  = {"$HOME", ".local", "bin", "dwm-audio", NULL};
 
 #endif
 

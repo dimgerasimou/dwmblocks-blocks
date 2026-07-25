@@ -8,7 +8,7 @@
 
 #define VOLUME_C
 
-#include "colorscheme.h"
+#include "colors.h"
 #include "utils.h"
 #include "config.h"
 
@@ -267,6 +267,10 @@ main(void)
 	int volume;
 	int mute;
 
+	set_name("dwmblocks-volume");
+	const enum Color def_cols[] = {clr_vol_mut, clr_vol_nrm};
+	clr_init(def_cols, 2);
+
 	a = getaudioinfo();
 	execbutton(a);
 
@@ -300,10 +304,10 @@ main(void)
 	}
 
 	if (mute) {
-		strncpy(c, CLR_VOL_MUT, sizeof(c));
+		strncpy(c, clr_get(clr_vol_mut), sizeof(c));
 		c[sizeof(c) - 1] = '\0';
 	} else {
-		strncpy(c, CLR_VOL_NRM, sizeof(c));
+		strncpy(c, clr_get(clr_vol_nrm), sizeof(c));
 		c[sizeof(c) - 1] = '\0';
 	}
 

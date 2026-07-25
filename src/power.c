@@ -11,7 +11,7 @@
 
 #define POWER_C
 
-#include "colorscheme.h"
+#include "colors.h"
 #include "utils.h"
 #include "config.h"
 
@@ -212,8 +212,11 @@ execbutton(void)
 int
 main(void)
 {
+	set_name("dwmblocks-power");
+	const enum Color def_cols[] = {clr_pwr};
+	clr_init(def_cols, 1);
 	execbutton();
-	printf(CLR_PWR " " CLR_NRM "\n");
+	printf("%s " CLR_NRM "\n", clr_get(clr_pwr));
 
 	return 0;
 }

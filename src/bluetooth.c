@@ -7,7 +7,7 @@
 
 #define BLUETOOTH_C
 
-#include "colorscheme.h"
+#include "colors.h"
 #include "utils.h"
 #include "config.h"
 
@@ -197,6 +197,9 @@ main(void)
 {
 	int state;
 
+	set_name("dwmblocks-bluetooth");
+	const enum Color def_cols[] = {clr_bt};
+	clr_init(def_cols, 1);
 	execbutton();
 
 	state = getbtstate();
@@ -205,6 +208,6 @@ main(void)
 		state = 0;
 	}
 
-	printf(CLR_BT "%s" CLR_NRM "\n", icons_bt[state ? 1 : 0]);
+	printf("%s%s" CLR_NRM "\n", clr_get(clr_bt), icons_bt[state ? 1 : 0]);
 	return EXIT_SUCCESS;
 }

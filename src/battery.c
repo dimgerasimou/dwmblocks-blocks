@@ -7,19 +7,29 @@
 #define BATTERY_C
 #define BUF_SIZE 64
 
-#include "colorscheme.h"
+#include "colors.h"
 #include "utils.h"
 #include "config.h"
 
 static const char *icons_battery[] = {
-	CLR_BAT_CRT " ",
-	CLR_BAT_LOW " ",
-	CLR_BAT_NRM " ",
-	CLR_BAT_NRM " ",
-	CLR_BAT_NRM " ",
+	" ",
+	" ",
+	" ",
+	" ",
+	" ",
 };
 
-static const char *icon_charging = CLR_BAT_CHG " ";
+static const int icons_battery_clrs[] = {
+	clr_bat_crt,
+	clr_bat_low,
+	clr_bat_nrm,
+	clr_bat_nrm,
+	clr_bat_nrm,
+	clr_bat_nrm,
+};
+
+static const char *icon_charging = " ";
+static const int icon_charging_clr = clr_bat_chg;
 
 #ifdef POWER_MANAGEMENT
 const char *optimus_manager_command = "optimus-manager --status";
@@ -228,15 +238,24 @@ main(void)
 	char *status = getstatus();
 	unsigned int capacity = getcapacity();
 	const char *icon;
+	int clr;
+
+	set_name("dwmblocks-battery");
+
+	const enum Color def_cols[] = {clr_bat_nrm, clr_bat_low, clr_bat_chg, clr_bat_crt};
+	clr_init(def_cols, 4);
 
 	execbutton(capacity, status);
 
-	if (status && strcmp(status, "Charging") == 0)
+	if (status && strcmp(status, "Charging") == 0) {
 		icon = icon_charging;
-	else
+		clr = icon_charging_clr;
+	} else {
 		icon = icons_battery[battery_icon_index(capacity)];
+		clr  = icons_battery_clrs[battery_icon_index(capacity)];
+	}
 
-	printf("%s" CLR_NRM "\n", icon);
+	printf("%s%s" CLR_NRM "\n", clr_get(clr), icon);
 
 	free(status);
 	return 0;
