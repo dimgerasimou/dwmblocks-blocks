@@ -25,7 +25,7 @@ getupdates(const char *cmd)
 
 	ep = popen(cmd, "r");
 	if (!ep) {
-		logwrite("popen() failed for command", cmd, LOG_WARN, "dwmblocks-kernel");
+		warn("popen() for: %s", cmd);
 		return 0;
 	}
 
@@ -77,7 +77,7 @@ execbutton(int *aur, int *pm)
 	}
 
 	case 3:
-		forkexecvp((char **)args_update_cmd, "dwmblocks-kernel");
+		forkexecvp((char **)args_update_cmd);
 		break;
 
 	default:
@@ -108,8 +108,7 @@ main(void)
 		struct utsname buf;
 
 		if (uname(&buf) != 0) {
-			logwrite("uname() failed while reading kernel release", NULL, LOG_WARN,
-			         "dwmblocks-kernel");
+			warn("uname():");;
 		} else {
 			/* duplicate and strip suffix like "-arch1-1" */
 			release = strdup(buf.release);

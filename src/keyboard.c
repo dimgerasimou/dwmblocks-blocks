@@ -78,11 +78,11 @@ execbutton(void)
 	case 1: {
 		char *path = getpath((char **)path_language_switch);
 		if (!path || !*path) {
-			logwrite("getpath() failed for language switch", NULL, LOG_WARN, "dwmblocks-keyboard");
+			warn("getpath() failed for language switch");
 			free(path);
 			return;
 		}
-		forkexecv(path, (char **)args_language_switch, "dwmblocks-keyboard");
+		forkexecv(path, (char **)args_language_switch);
 		free(path);
 		break;
 	}
@@ -106,21 +106,21 @@ main(void)
 
 	dpy = XOpenDisplay(NULL);
 	if (!dpy)
-		logwrite("XOpenDisplay() failed", NULL, LOG_FATAL, "dwmblocks-keyboard");
+		die("XOpenDisplay() failed");
 
 	if (XkbGetState(dpy, XkbUseCoreKbd, &state) != Success) {
-		logwrite("XkbGetState() failed", NULL, LOG_WARN, "dwmblocks-keyboard");
+		warn("XkbGetState() failed");
 		goto cleanup;
 	}
 
 	if (!XkbRF_GetNamesProp(dpy, NULL, &vd) || !vd.layout || !*vd.layout) {
-		logwrite("XkbRF_GetNamesProp() failed or layout missing", NULL, LOG_WARN, "dwmblocks-keyboard");
+		warn("XkbRF_GetNamesProp() failed");
 		goto cleanup;
 	}
 
 	layout = nth_csv_token_dup(vd.layout, (unsigned int)state.group);
 	if (!layout || !*layout) {
-		logwrite("Invalid layout for given group", NULL, LOG_WARN, "dwmblocks-keyboard");
+		warn("Invalid layout for given group");
 		goto cleanup;
 	}
 

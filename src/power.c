@@ -30,18 +30,18 @@ clippause(const unsigned int seconds)
 	switch (fork()) {
 	case -1:
 		errno = ECHILD;
-		logwrite("fork() failed", NULL, LOG_FATAL, "dwmblocks-power");
+		die("fork():");
 		exit(errno);
 
 	case 0:
 		setsid();
-		pid_t pid = getpidof("clipmenud", "dmblocks-power");
+		pid_t pid = getpidof("clipmenud");
 
 		if (pid < 0) {
-			pid = getpidof("bash\0/usr/bin/clipmenud", "dmblocks-power");
+			pid = getpidof("bash\0/usr/bin/clipmenud");
 			if (pid < 0) {
 				errno = ESRCH;
-				logwrite("Couldn't get pID of", "clipmenud", LOG_FATAL, "dwmblocks-power");
+				die("pidof() of: clipmenud:");
 			}
 		}
 
@@ -63,13 +63,13 @@ clippause(const unsigned int seconds)
 static void
 clipmenu(void)
 {
-	switch (getxmenuopt(menu_clipboard, "dwmblocks-power")) {
+	switch (getxmenuopt(menu_clipboard)) {
 	case 0:
 		clippause(60);
 		break;
 
 	case 1:
-		forkexecvp((char**) args_clipboard_delete, "dwmblocks-power");
+		forkexecvp((char**) args_clipboard_delete);
 		break;
 
 	default:
@@ -86,20 +86,20 @@ const char *args_optimus_nvidia[]     = {"optimus-manager", "--no-confirm", "--s
 static void
 optimusmenu(void)
 {
-	switch (getxmenuopt(menu_optimus, "dwmblocks-power")) {
+	switch (getxmenuopt(menu_optimus)) {
 	case 0:
-		if (getxmenuopt(menu_yes_no, "dwmblocks-power") == 1)
-			forkexecvp((char**) args_optimus_integrated, "dwmblocks-power");
+		if (getxmenuopt(menu_yes_no) == 1)
+			forkexecvp((char**) args_optimus_integrated);
 		break;
 
 	case 1:
-		if (getxmenuopt(menu_yes_no, "dwmblocks-power") == 1)
-			forkexecvp((char**) args_optimus_hybrid, "dwmblocks-power");
+		if (getxmenuopt(menu_yes_no) == 1)
+			forkexecvp((char**) args_optimus_hybrid);
 		break;
 
 	case 2:
-		if (getxmenuopt(menu_yes_no, "dwmblocks-power") == 1)
-			forkexecvp((char**) args_optimus_nvidia, "dwmblocks-power");
+		if (getxmenuopt(menu_yes_no) == 1)
+			forkexecvp((char**) args_optimus_nvidia);
 		break;
 
 	default:
@@ -116,16 +116,16 @@ restartdwmblocks(void)
 
 	path = getpath((char**) path_dwmblocks);
 
-	if ((pid = getpidof("dwmblocks", "dwmblocks-power")) == -ENOENT) {
-		pid = getpidof(path, "dwmblocks-power");
+	if ((pid = getpidof("dwmblocks")) == -ENOENT) {
+		pid = getpidof(path);
 	}
 
 	if (pid <= 0)
-		logwrite("Failed to get the pID of", path, LOG_FATAL, "dwmblocks-power");
+		die("Failed to get the pID of: %s%", path);
 
 	kill(pid, SIGTERM);
 	unsetenv("BLOCK_BUTTON");
-	forkexecvp((char**) args_dwmblocks, "dwmblocks-power");
+	forkexecvp((char**) args_dwmblocks);
 	free(path);
 }
 
@@ -133,7 +133,7 @@ static void
 lockscreen(void)
 {
 	sleep(1);
-	forkexecvp((char**) args_lockscreen, "dwmblocks-power");
+	forkexecvp((char**) args_lockscreen);
 }
 
 static void
@@ -149,24 +149,24 @@ mainmenu(void)
 		strapp(&menu, menu_power_clipboard);
 	#endif
 
-	switch (getxmenuopt(menu, "dwmblocks-power")) {
+	switch (getxmenuopt(menu)) {
 	case 0:
-		if (getxmenuopt(menu_yes_no, "dwmblocks-power") == 1)
+		if (getxmenuopt(menu_yes_no) == 1)
 			execl("/bin/shutdown", "shutdown", "now", NULL);
 		break;
 
 	case 1:
-		if (getxmenuopt(menu_yes_no, "dwmblocks-power") == 1)
+		if (getxmenuopt(menu_yes_no) == 1)
 			execl("/bin/shutdown", "shutdown", "now", "-r", NULL);
 		break;
 
 	case 2:
-		if (getxmenuopt(menu_yes_no, "dwmblocks-power") == 1) {
-			int pid = getpidof("/usr/local/bin/dwm", "dwmblocks-power");
+		if (getxmenuopt(menu_yes_no) == 1) {
+			int pid = getpidof("/usr/local/bin/dwm");
 			if (pid > 0) {
 				kill(pid, SIGTERM);
 			} else {
-				logwrite("Failed to get pid of process: ", "dwm", LOG_ERROR, "dwmblocks-power");
+				die("Failed to get pid of process: %s", "dwm");
 				exit(errno);
 			}
 		}

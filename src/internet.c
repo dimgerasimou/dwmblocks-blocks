@@ -133,7 +133,7 @@ execbutton(NMClient *c, int icind)
 		break;
 
 	case 3:
-		switch (getxmenuopt(menu_string, "dwmblocks-internet")) {
+		switch (getxmenuopt(menu_string)) {
 		case 0:
 			togglewifi(c);
 			break;
@@ -141,14 +141,14 @@ execbutton(NMClient *c, int icind)
 		case 1: {
 			char *path = getpath((char **)path_wifi_connect);
 			if (path) {
-				forkexecv(path, (char **)args_wifi_connect, "dwmblocks-internet");
+				forkexecv(path, (char **)args_wifi_connect);
 				free(path);
 			}
 			break;
 		}
 
 		case 2:
-			forkexecvp((char **)args_tui_internet, "dwmblocks-internet");
+			forkexecvp((char **)args_tui_internet);
 			break;
 
 		default:
@@ -184,22 +184,16 @@ getactive(NMClient *c)
 
 	if (!strcmp(type, "802-11-wireless")) {
 		acdev = nm_active_connection_get_devices(ac);
-		if (!acdev || acdev->len < 1) {
-			logwrite("Wifi active devices less than 1", NULL, LOG_INFO, "dwmblocks-internet");
+		if (!acdev || acdev->len < 1)
 			return 7;
-		}
 
 		dev = NM_DEVICE_WIFI(g_ptr_array_index(acdev, 0));
-		if (!dev) {
-			logwrite("Could not fetch wifi device", NULL, LOG_INFO, "dwmblocks-internet");
+		if (!dev)
 			return 7;
-		}
 
 		ap = nm_device_wifi_get_active_access_point(dev);
-		if (!ap) {
-			logwrite("Could not fetch active access point", NULL, LOG_INFO, "dwmblocks-internet");
+		if (!ap)
 			return 7;
-		}
 
 		/* map 0..100 -> 0..4 */
 		state = (nm_access_point_get_strength(ap) / 20);
@@ -221,7 +215,7 @@ nminit(NMClient **c)
 	*c = nm_client_new(NULL, &error);
 
 	if (error) {
-		logwrite("Error initializing NetworkManager client", error->message, LOG_WARN, "dwmblocks-internet");
+		warn("Error initializing NetworkManager client: %s", error->message);
 		g_error_free(error);
 	}
 
@@ -254,10 +248,8 @@ printinfo(NMClient *c, const int ind)
 
 	for (int i = 0; i < (int)devarr->len; i++) {
 		dev = g_ptr_array_index(devarr, i);
-		if (!dev) {
-			logwrite("Failed to fetch a device", NULL, LOG_INFO, "dwmblocks-internet");
+		if (!dev)
 			continue;
-		}
 
 		int type = nm_device_get_device_type(dev);
 		switch (type) {

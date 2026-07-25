@@ -22,7 +22,7 @@ getmemoryusage_kib(void)
 
 	fp = fopen("/proc/meminfo", "r");
 	if (!fp)
-		logwrite("fopen() failed for", "/proc/meminfo", LOG_FATAL, "dwmblocks-memory");
+		die("fopen() failed for: \"/proc/meminfo\":");
 
 	while (fgets(buffer, sizeof(buffer), fp)) {
 		if (strncmp(buffer, "MemTotal:", 9) == 0) {
@@ -40,7 +40,7 @@ getmemoryusage_kib(void)
 	fclose(fp);
 
 	if (total < 0 || avail < 0) {
-		logwrite("Failed to parse MemTotal/MemAvailable", NULL, LOG_WARN, "dwmblocks-memory");
+		warn("Failed to parse MemTotal/MemAvailable");
 		return 0;
 	}
 
@@ -60,7 +60,7 @@ execbutton(void)
 
 	switch (atoi(env)) {
 	case 3:
-		forkexecvp((char **)args_task_manager, "dwmblocks-memory");
+		forkexecvp((char **)args_task_manager);
 		break;
 	default:
 		break;

@@ -79,13 +79,8 @@ getcalendar(const int mday, const int wday, const int m, const int y)
 		else
 			n = snprintf(buf, sizeof(buf), "%2d ", i);
 
-		if (n < 0 || n >= (int)sizeof(buf)) {
-			logwrite("snprintf() buffer overflow", NULL, LOG_ERROR, "dwmblocks-calendar");
-			if (ret)
-				free(ret);
-
-			return NULL;
-		}
+		if (n < 0 || n >= (int)sizeof(buf))
+			die("snprintf() buffer overflow");
 
 		strapp(&ret, buf);
 		fday++;
@@ -105,10 +100,9 @@ getsummary(const int m, const int y)
 
 	n = snprintf(buf, sizeof(buf), "%*s %d", size, months_string[m], y);
 
-	if (n < 0 || n >= (int)sizeof(buf)) {
-		logwrite("snprintf() buffer overflow", NULL, LOG_ERROR, "dwmblocks-date");
-		return NULL;
-	}
+	if (n < 0 || n >= (int)sizeof(buf))
+		die("snprintf() buffer overflow");
+
 
 	return strdup(buf);
 }
@@ -154,7 +148,7 @@ execbutton(void)
 		break;
 
 	case 3:
-		forkexecvp((char **) args_gui_calendar, "dwmblocks-date");
+		forkexecvp((char **) args_gui_calendar);
 		break;
 
 	default:

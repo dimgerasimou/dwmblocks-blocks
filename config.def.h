@@ -7,16 +7,6 @@ static const char term_cmd[] = "st";
 static const char term_title_opt[] = "-t";
 
 /* ============================================================
- * GLOBAL SETTINGS
- * ============================================================ */
-#ifdef UTILS_C
-
-/* Log file path */
-const char *path_log[] = {"$HOME", "window-manager.log", NULL};
-
-#endif
-
-/* ============================================================
  * BATTERY BLOCK
  * ============================================================ */
 #ifdef BATTERY_C

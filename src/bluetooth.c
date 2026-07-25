@@ -30,7 +30,7 @@ getbtadapterstate(DBusConnection *conn, DBusError *err, const char *objpath)
 	msg = dbus_message_new_method_call("org.bluez", objpath,
 	                                   "org.freedesktop.DBus.Properties", "Get");
 	if (!msg) {
-		logwrite("Failed to create DBus message.", NULL, LOG_WARN, "dwmblocks-bluetooth");
+		warn("Failed to create DBus message");
 		return -1;
 	}
 
@@ -42,7 +42,7 @@ getbtadapterstate(DBusConnection *conn, DBusError *err, const char *objpath)
 	dbus_message_unref(msg);
 
 	if (dbus_error_is_set(err)) {
-		logwrite("D-Bus error", err->message, LOG_WARN, "dwmblocks-bluetooth");
+		warn("D-Bus error: %s", err->message);
 		dbus_error_free(err);
 		return -1;
 	}
@@ -71,7 +71,7 @@ getbtstate(void)
 
 	conn = dbus_bus_get(DBUS_BUS_SYSTEM, &err);
 	if (!conn || dbus_error_is_set(&err)) {
-		logwrite("Failed to connect to the DBus system bus.", err.message, LOG_WARN, "dwmblocks-bluetooth");
+		warn("Failed to connect to the DBus system bus: %s", err.message);
 		dbus_error_free(&err);
 		return -1;
 	}
@@ -99,7 +99,7 @@ setbtpowered(DBusConnection *conn, DBusError *err, const char *objpath, dbus_boo
 	msg = dbus_message_new_method_call("org.bluez", objpath,
 	                                   "org.freedesktop.DBus.Properties", "Set");
 	if (!msg) {
-		logwrite("Failed to create DBus message.", NULL, LOG_WARN, "dwmblocks-bluetooth");
+		warn("Failed to create DBus message");
 		return -1;
 	}
 
@@ -115,7 +115,7 @@ setbtpowered(DBusConnection *conn, DBusError *err, const char *objpath, dbus_boo
 	dbus_message_unref(msg);
 
 	if (dbus_error_is_set(err)) {
-		logwrite("D-Bus error", err->message, LOG_WARN, "dwmblocks-bluetooth");
+		warn("D-Bus error: %s", err->message);
 		dbus_error_free(err);
 		return -1;
 	}
@@ -139,7 +139,7 @@ togglebt(void)
 
 	conn = dbus_bus_get(DBUS_BUS_SYSTEM, &err);
 	if (!conn || dbus_error_is_set(&err)) {
-		logwrite("Failed to connect to the DBus system bus.", err.message, LOG_WARN, "dwmblocks-bluetooth");
+		warn("Failed to connect to the DBus system bus: %s", err.message);
 		dbus_error_free(&err);
 		return;
 	}
@@ -155,7 +155,7 @@ togglebt(void)
 	}
 
 	if (!objpath) {
-		logwrite("No Bluetooth adapter found (hci0/hci1).", NULL, LOG_WARN, "dwmblocks-bluetooth");
+		warn("No Bluetooth adapter found (hci0/hci1)");
 		dbus_connection_unref(conn);
 		return;
 	}
@@ -180,7 +180,7 @@ execbutton(void)
 
 	switch (atoi(env)) {
 	case 1:
-		forkexecvp((char**)bt_tui_cmd, "dwmblocks-bluetooth");
+		forkexecvp((char**)bt_tui_cmd);
 		break;
 
 	case 2:

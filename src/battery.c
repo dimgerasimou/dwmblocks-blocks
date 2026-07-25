@@ -45,7 +45,7 @@ getmode(void)
 
 	ep = popen(optimus_manager_command, "r");
 	if (!ep) {
-		logwrite("popen() failed for", optimus_manager_command, LOG_WARN, "dwmblocks-battery");
+		warn("popen() for: %s:", optimus_manager_command);
 		return 0;
 	}
 
@@ -171,10 +171,8 @@ getcapacity(void)
 	free(bat);
 
 	fp = fopen(path, "r");
-	if (!fp) {
-		logwrite("fopen() failed for file", path, LOG_ERROR, "dwmblocks-battery");
-		return 0;
-	}
+	if (!fp)
+		die("fopen() for: %s:", path);
 
 	if (fscanf(fp, "%u", &cap) != 1)
 		cap = 0;
@@ -203,10 +201,8 @@ getstatus(void)
 
 
 	fp = fopen(path, "r");
-	if (!fp) {
-		logwrite("fopen() failed for file", path, LOG_ERROR, "dwmblocks-battery");
-		return 0;
-	}
+	if (!fp)
+		die("fopen() for: %s:", path);
 
 	buf[0] = '\0';
 	if (!fgets(buf, sizeof(buf), fp))

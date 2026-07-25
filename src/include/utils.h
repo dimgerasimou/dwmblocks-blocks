@@ -5,14 +5,6 @@
 
 #include <libnotify/notification.h>
 
-typedef enum {
-	LOG_SILLY,
-	LOG_INFO,
-	LOG_WARN,
-	LOG_ERROR,
-	LOG_FATAL,
-} log_level;
-
 void set_name(const char *name);
 const char *get_name(void);
 
@@ -33,18 +25,18 @@ void *emalloc(const size_t size);
 /*
  * Forks and executes given command.
  */
-void forkexecv(const char *path, char **args, const char *argv0);
+void forkexecv(const char *path, char **args);
 
 /*
  * Forks and executes given command silently, redirecting
  * stdout and stderr to '/dev/null'.
  */
-void forkexecvs(const char *path, char **args, const char *argv0);
+void forkexecvs(const char *path, char **args);
 
 /*
  * Forks and executes given command from bin directory.
  */
- void forkexecvp(char **args, const char *argv0);
+ void forkexecvp(char **args);
 
 /*
  * Returns the absolute path of the concatenated path_array.
@@ -58,25 +50,14 @@ char* getpath(char **path_array);
  * matches the process string. Negative pids are the corresponding
  * error values. (If process exists more than one time, it fails)
  */
-pid_t getpidof(const char *process, const char *argv0);
+pid_t getpidof(const char *process);
 
 /*
  * Returns the output of xmenu, after `menu` string is passed as the
  * argument. Negative values are the corresponding error values.
  * Parses only single integer xmenu outputs.
  */
-int getxmenuopt(const char *menu, const char *argv0);
-
-/*
- * Writes a log to the file defined by log_path with a timestamp
- * and the name of the caller (argv0). If name str is NULL,
- * it doesn't add it. Has multiple log levels:
- * 	LOG_SILLY: does not write the strerror or log level.
- * 	LOG_INFO:  writes INFO log level but no strerror.
- * 	LOG_WARN:  writes WARN log level and strerror.
- * 	LOG_ERROR: writes ERROR log level, strerror and terminates with errno.
- */
-void logwrite(const char *log, const char *name, const log_level level, const char *argv0);
+int getxmenuopt(const char *menu);
 
 /*
  * Sends a single desktop notification.

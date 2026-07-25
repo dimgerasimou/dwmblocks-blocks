@@ -73,24 +73,24 @@ execbutton(AudioInfo **a)
 		break;
 
 	case 2:
-		forkexecvp((char**) args_eqalizer, "dwmblocks-volume");
+		forkexecvp((char**) args_eqalizer);
 		break;
 
 	case 3:
 		path = getpath((char**) path_volume_control);
-		forkexecv(path, (char**) args_volume_mute, "dwmblocks-volume");
+		forkexecv(path, (char**) args_volume_mute);
 		free(path);
 		break;
 
 	case 4:
 		path = getpath((char**) path_volume_control);
-		forkexecv(path, (char**) args_volume_increase, "dwmblocks-volume");
+		forkexecv(path, (char**) args_volume_increase);
 		free(path);
 		break;
 
 	case 5:
 		path = getpath((char**) path_volume_control);
-		forkexecv(path, (char**) args_volume_decrase, "dwmblocks-volume");
+		forkexecv(path, (char**) args_volume_decrase);
 		free(path);
 		break;
 
@@ -145,13 +145,10 @@ initaudioinfo(void)
 {
 	AudioInfo **ret = NULL;
 	
-	if (!(ret = malloc(2 * sizeof(AudioInfo*))))
-		logwrite("malloc() failed", NULL, LOG_ERROR, "dwmblocks-volume");
+	ret = emalloc(2 * sizeof(AudioInfo*));
 
 	for (int i = 0; i < 2; i++) {
-		if (!(ret[i] = malloc(sizeof(AudioInfo))))
-			logwrite("malloc() failed", NULL, LOG_ERROR, "dwmblocks-volume");
-
+		ret[i] = emalloc(2 * sizeof(AudioInfo));
 		ret[i]->mute = 0;
 		ret[i]->done = 0;
 		ret[i]->volume = 0;
@@ -164,11 +161,11 @@ static void
 initpa(void)
 {
 	if (!(ml = pa_mainloop_new()))
-		logwrite("pa_mainloop_new() failed to initialize", NULL, LOG_ERROR, "dwmblocks-volume");
+		die("pa_mainloop_new() failed to initialize");
 	if (!(mlapi = pa_mainloop_get_api(ml)))
-		logwrite("pa_mainloop_get_api() failed to initialize", NULL, LOG_ERROR, "dwmblocks-volume");
+		die("pa_mainloop_get_api() failed to initialize");
 	if (!(ctx = pa_context_new(mlapi, "dwmblocks-volume")))
-		logwrite("pa_context_new() failed to initialize", NULL, LOG_ERROR, "dwmblocks-volume");
+		die("pa_context_new() failed to initialize");
 }
 
 static void

@@ -16,7 +16,6 @@
 #define UTILS_C
 
 #include "utils.h"
-#include "config.h"
 
 static const char *program_name;
 
@@ -131,18 +130,16 @@ strtouint64(const char *input, uint64_t *output)
 /* header functions */
 
 void
-forkexecv(const char *path, char **args, const char *argv0)
+forkexecv(const char *path, char **args)
 {
 	switch (fork()) {
 	case -1:
-		logwrite("fork() failed", NULL, LOG_FATAL, argv0);
-		break;
+		die("fork():");
 
 	case 0:
 		setsid();
 		execv(path, args);
-		logwrite("execv() failed for", args[0], LOG_FATAL, argv0);
-		break;
+		die("execv() for: %s:", args[0]);
 
 	default:
 		break;
@@ -150,32 +147,30 @@ forkexecv(const char *path, char **args, const char *argv0)
 }
 
 void
-forkexecvs(const char *path, char **args, const char *argv0)
+forkexecvs(const char *path, char **args)
 {
 	switch (fork()) {
 	case -1:
-		logwrite("fork() failed", NULL, LOG_FATAL, argv0);
-		break;
+		die("fork:");
 
 	case 0:
 	{
 		int fd;
 
 		if (!(fd = open("/dev/null", O_WRONLY)))
-			logwrite("Failed to open",  "'/dev/null/'", LOG_FATAL, argv0);
+			die("open() for \"/dev/null\":");
 
 		if (dup2(fd, STDOUT_FILENO) == -1)
-			logwrite("dup2() failed for", "STDOUT", LOG_FATAL, argv0);
+			die("dup2():");
 
 		if (dup2(fd, STDERR_FILENO) == -1)
-			logwrite("dup2() failed for", "STDERR", LOG_FATAL, argv0);
+			die("dup2():");
 
 		close(fd);
 
 		setsid();
 		execv(path, args);
-		logwrite("execv() failed for", args[0], LOG_FATAL, argv0);
-		break;
+		die("execv() for: %s:", args[0]);
 	}
 
 	default:
@@ -185,18 +180,16 @@ forkexecvs(const char *path, char **args, const char *argv0)
 
 
 void
-forkexecvp(char **args, const char *argv0)
+forkexecvp(char **args)
 {
 	switch (fork()) {
 	case -1:
-		logwrite("fork() failed", NULL, LOG_FATAL, argv0);
-		break;
+		die("fork():");
 
 	case 0:
 		setsid();
 		execvp(args[0], args);
-		logwrite("execvp() failed for", args[0], LOG_FATAL, argv0);
-		break;
+		die("execvp() for: %s:", args[0]);
 
 	default:
 		break;
@@ -216,10 +209,10 @@ getpath(char **path_array)
 			const char *ptr = path_array[i] + 1;
 			char *env = getenv(ptr);
 
-			if (!env) {
-				fprintf(stderr, "Failed to get env variable:%s - %s\n", path_array[i], strerror(errno));
-				exit(errno);
-			}
+			die("getenv() for: %s:", path_array[i]);
+
+			if (!env)
+				die("getenv() for: %s:", path_array[i]);
 
 			sprintf(name, "%s", env);
 			strcat(path, name);
@@ -233,7 +226,7 @@ getpath(char **path_array)
 }
 
 pid_t
-getpidof(const char *process, const char *argv0)
+getpidof(const char *process)
 {
 	char          buffer[PATH_MAX];
 	struct dirent *ent;
@@ -245,11 +238,8 @@ getpidof(const char *process, const char *argv0)
 	dir = opendir("/proc");
 	ret = 0;
 
-	if (!dir) {
-		errno = ENOENT;
-		logwrite("opendir() failed for directory", "/proc", LOG_ERROR, argv0);
-		return -ENOENT;
-	}
+	if (!dir)
+		die("opendir() for \"/proc\":");
 
 	while ((ent = readdir(dir)) && ret >= 0) {
 		if (strtouint64(ent->d_name, &pid) < 0)
@@ -280,7 +270,7 @@ getpidof(const char *process, const char *argv0)
 }
 
 int
-getxmenuopt(const char *menu, const char *argv0)
+getxmenuopt(const char *menu)
 {
 	int  option;
 	int  writepipe[2];
@@ -290,14 +280,12 @@ getxmenuopt(const char *menu, const char *argv0)
 	option = -EREMOTEIO;
 	buffer[0] = '\0';
 
-	if (pipe(writepipe) < 0 || pipe(readpipe) < 0) {
-		logwrite("pipe() failed", NULL, LOG_FATAL, argv0);
-	}
+	if (pipe(writepipe) < 0 || pipe(readpipe) < 0)
+		die("pipe():");
 	
 	switch (fork()) {
 		case -1:
-			logwrite("fork() failed", NULL, LOG_FATAL, argv0);
-			break;
+			die("fork():");
 
 		case 0: /* child - xmenu */
 			close(writepipe[1]);
@@ -332,9 +320,9 @@ getxmenuopt(const char *menu, const char *argv0)
 }
 
 pid_t
-killstr(const char *procname, const int signo, const char *argv0)
+killstr(const char *procname, const int signo)
 {
-	pid_t pID = getpidof(procname, argv0);
+	pid_t pID = getpidof(procname);
 
 	if (pID > 0) {
 		kill(pID, signo);
@@ -342,67 +330,6 @@ killstr(const char *procname, const int signo, const char *argv0)
 	}
 
 	return pID;
-}
-
-void
-logwrite(const char *message, const char *name, const log_level level, const char *argv0)
-{
-	struct tm *time_info = NULL;
-	time_t    raw_time   = 0;
-	FILE      *fp        = NULL;
-	char      *path  = NULL;
-	uint      err = errno;
-
-	if (!message)
-		return;
-
-	path = getpath((char**) path_log);
-	fp = fopen(path, "a");
-
-	if (!fp) {
-		fprintf(stderr, "dwmblocks - fopen() failed for path: %s - %s\n", path, strerror(errno));
-		return;
-	}
-
-	time(&raw_time);
-	time_info = localtime(&raw_time);
-
-	fprintf(fp, "[%d-%02d-%02d %02d:%02d:%02d] ", time_info->tm_year+1900,
-	        time_info->tm_mon+1, time_info->tm_mday, time_info->tm_hour,
-	        time_info->tm_min, time_info->tm_sec);
-
-	switch (level) {
-	case LOG_INFO:
-		fprintf(fp, "[INFO]         ");
-		break;
-
-	case LOG_WARN:
-		fprintf(fp, "[WARN]         ");
-		break;
-
-	case LOG_ERROR:
-		fprintf(fp, "[ERROR] [E%3d] ", err);
-		break;
-
-	case LOG_FATAL:
-		fprintf(fp, "[FATAL] [E%3d] ", err);
-		break;
-	default:
-		fprintf(fp, "               ");
-		break;
-	}
-
-	fprintf(fp, "[%s] %s", argv0, message);
-
-	if (name) fprintf(fp, " '%s'", name);
-
-	fprintf(fp, "\n");
-
-	fclose(fp);
-	free(path);
-
-	if (level == LOG_FATAL)
-		exit(err);
 }
 
 void
@@ -531,17 +458,13 @@ uitoa(const unsigned int num)
 	if (!digits)
 		digits++;
 
-	if (!(ret = malloc((digits + 1) * sizeof(char)))) {
-		logwrite("malloc() failed. Returned NULL pointer", NULL, LOG_ERROR, "dwmblocks-battery");
-		return NULL;
-	}
+	if (!(ret = malloc((digits + 1) * sizeof(char))))
+		die("malloc():");
 
 	snCheck = snprintf(ret, digits + 1, "%u", num);
 
-	if (snCheck < 0 || snCheck > (int) digits) {
-		logwrite("snprintf() failed. Buffer overflow", NULL, LOG_ERROR, "dwmblocks-battery");
-		return NULL;
-	}
+	if (snCheck < 0 || snCheck > (int) digits)
+		die("snprintf() buffer overflow");
 
 	return ret;
 }
