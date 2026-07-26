@@ -17,19 +17,6 @@
 #define LEN(a)    (sizeof(a) / sizeof((a)[0]))
 #define BODY_SIZE 256
 
-struct Icons {
-	const char *str;
-	enum Color  clr;
-};
-
-static const struct Icons icons[] = {
-	{ " ", clr_bat_crt },
-	{ " ", clr_bat_low },
-	{ " ", clr_bat_nrm },
-	{ " ", clr_bat_nrm },
-	{ " ", clr_bat_nrm },
-	{ " ", clr_bat_chg },
-};
 
 #ifdef POWER_MANAGEMENT
 struct Optimus {
@@ -223,19 +210,19 @@ getstatus(const char *base, char *out, const size_t outsz)
 	}
 }
 
+struct Status {
+	unsigned int cap;
+	const char  *st;
+};
+
 static void
-execbutton(const unsigned int cap, const char *st)
+on_left(void *ctx)
 {
-	const char *env = getenv("BLOCK_BUTTON");
-	char        c[12];
+	const struct Status *s = ctx;
+	char                 c[12];
 
-	if (!env || !*env)
-		return;
-
-	if (atoi(env) == 1) {
-		uitoa(cap, c, sizeof(c));
-		send_notification(c, st);
-	}
+	uitoa(s->cap, c, sizeof(c));
+	send_notification(c, s->st);
 }
 
 static size_t
@@ -255,32 +242,44 @@ battery_icon_index(const unsigned int cap)
 int
 main(void)
 {
-	const enum Color def_cols[] = {
-		clr_bat_nrm, clr_bat_low, clr_bat_chg, clr_bat_crt
+	/* Colour per icon index, parallel to icons_battery in config.h. */
+	static const enum Color icon_colors[] = {
+		clr_bat_crt, clr_bat_low, clr_bat_nrm,
+		clr_bat_nrm, clr_bat_nrm, clr_bat_chg
 	};
 
-	char         base[PATH_MAX];
-	char         st[64];
-	unsigned int cap;
-	size_t       i;
+	static const struct Button buttons[] = {
+		{ 1, on_left },
+	};
+
+	struct Status s;
+	char          base[PATH_MAX];
+	char          st[64];
+	size_t        i;
 
 	set_name("dwmblocks-battery");
-	clr_init(def_cols, LEN(def_cols));
+	clr_init();
 
-	if (getbatterypath(base, sizeof(base)) != 0)
-		die("no battery found under /sys/class/power_supply");
+	if (getbatterypath(base, sizeof(base)) != 0) {
+		/*
+		 * No battery is a normal state on a desktop, so render the
+		 * empty icon rather than leaving the bar blank.
+		 */
+		printf("%s%s" CLR_NRM "\n", clr_get(icon_colors[0]), icons_battery[0]);
+		return 0;
+	}
 
-	cap = getcapacity(base);
+	s.cap = getcapacity(base);
 	getstatus(base, st, sizeof(st));
+	s.st = st;
 
-	execbutton(cap, st);
+	dispatch(buttons, LEN(buttons), &s);
 
-	i = (strcmp(st, "Charging") == 0) ? 5 : battery_icon_index(cap);
-	if (i >= LEN(icons))
-		die("icon index %zu out of range", i);
+	i = (strcmp(st, "Charging") == 0) ? 5 : battery_icon_index(s.cap);
+	if (i >= LEN(icons_battery))
+		i = 0;
 
-	printf("%s%s" CLR_NRM "\n", clr_get(icons[i].clr), icons[i].str);
+	printf("%s%s" CLR_NRM "\n", clr_get(icon_colors[i]), icons_battery[i]);
 
 	return 0;
 }
-

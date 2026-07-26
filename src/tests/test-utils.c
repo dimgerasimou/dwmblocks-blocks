@@ -95,6 +95,22 @@ test_uitoa(void)
 }
 
 static void
+test_ishexcolor(void)
+{
+	CHECK(ishexcolor("#F38BA8") == 1);
+	CHECK(ishexcolor("#000000") == 1);
+	CHECK(ishexcolor("#abcdef") == 1);
+	CHECK(ishexcolor("#ABCDEF") == 1);
+
+	CHECK(ishexcolor("#GGGGGG") == 0);   /* not hex */
+	CHECK(ishexcolor("F38BA8") == 0);    /* no leading # */
+	CHECK(ishexcolor("#F38BA") == 0);    /* too short */
+	CHECK(ishexcolor("#F38BA88") == 0);  /* too long */
+	CHECK(ishexcolor("") == 0);
+	CHECK(ishexcolor(NULL) == 0);
+}
+
+static void
 test_getpidof_missing(void)
 {
 	/* No process should ever have this cmdline. */
@@ -114,6 +130,7 @@ main(void)
 	test_getpath_overflow();
 	test_getpath_empty();
 	test_uitoa();
+	test_ishexcolor();
 	test_getpidof_missing();
 
 	printf("test-utils: %u checks, %u failures\n", checks, failures);

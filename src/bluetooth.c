@@ -10,7 +10,6 @@
 #include "utils.h"
 #include "config.h"
 
-static const char *icons_bt[] = { "󰂲", "󰂯" };
 #define DBUS_TIMEOUT_MS 1000
 #define LEN(a)          (sizeof(a) / sizeof((a)[0]))
 
@@ -192,43 +191,39 @@ togglebt(void)
 }
 
 static void
-execbutton(void)
+on_left(void *ctx)
 {
-	const char *env = getenv("BLOCK_BUTTON");
-	if (!env || !*env)
-		return;
+	(void)ctx;
+	execute((char **)bt_tui_cmd);
+}
 
-	switch (atoi(env)) {
-	case 1:
-		execute((char**)bt_tui_cmd);
-		break;
-
-	case 2:
-		togglebt();
-		break;
-
-	default:
-		break;
-	}
+static void
+on_middle(void *ctx)
+{
+	(void)ctx;
+	togglebt();
 }
 
 int
 main(void)
 {
-	const enum Color def_cols[] = { clr_bt };
+	static const struct Button buttons[] = {
+		{ 1, on_left },
+		{ 2, on_middle },
+	};
 
 	int state;
 
 	set_name("dwmblocks-bluetooth");
-	clr_init(def_cols, LEN(def_cols));
+	clr_init();
 
-	execbutton();
+	dispatch(buttons, LEN(buttons), NULL);
 
 	state = getbtstate();
 	if (state < 0)
 		state = 0;
 
-	printf("%s%s" CLR_NRM "\n", clr_get(clr_bt), icons_bt[state ? 1 : 0]);
+	printf("%s%s" CLR_NRM "\n", clr_get(clr_bt), icons_bluetooth[state ? 1 : 0]);
 
 	return 0;
 }

@@ -275,7 +275,8 @@ getxmenuopt(const char *menu)
 
 	close(toread[0]);
 
-	while (waitpid(pid, NULL, 0) < 0 && errno == EINTR);
+	while (waitpid(pid, NULL, 0) < 0 && errno == EINTR)
+		;
 
 	return option;
 }
@@ -328,4 +329,54 @@ getpidof(const char *process)
 		errno = ESRCH;
 
 	return ret;
+}
+
+void
+dispatch(const struct Button *buttons, const size_t n, void *ctx)
+{
+	const char *env;
+	int         want;
+
+	if (!buttons || n == 0)
+		return;
+
+	env = getenv("BLOCK_BUTTON");
+	if (!env || !*env)
+		return;
+
+	want = atoi(env);
+
+	for (size_t i = 0; i < n; i++) {
+		if (buttons[i].button == want) {
+			if (buttons[i].handler)
+				buttons[i].handler(ctx);
+			return;
+		}
+	}
+}
+
+static int
+ishexdigit(char c)
+{
+	if (c >= 'a' && c <= 'f')
+		return 1;
+	if (c >= 'A' && c <= 'F')
+		return 1;
+	if (c >= '0' && c <= '9')
+		return 1;
+	return 0;
+}
+
+int
+ishexcolor(const char *s)
+{
+	if (!s || strlen(s) != 7 || s[0] != '#')
+		return 0;
+
+	for (size_t i = 1; i < 7; i++) {
+		if (!ishexdigit(s[i]))
+			return 0;
+	}
+
+	return 1;
 }

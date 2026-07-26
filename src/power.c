@@ -19,13 +19,6 @@
 #include "utils.h"
 #include "config.h"
 
-/* menu prompts */
-static const char *const menu_power           = " Shutdown\t0\n Reboot\t1\n\n󰗽 Logout\t2\n Lock\t3\n\n Restart DwmBlocks\t4";
-static const char *const menu_power_optimus   = "\n󰘚 Optimus Manager\t5";
-static const char *const menu_power_clipboard = "\n󰅌 Clipmenu\t6";
-static const char *const menu_optimus         = "Integrated\t0\nHybrid\t1\nNvidia\t2";
-static const char *const menu_clipboard       = "Pause clipmenu for 1 minute\t0\nClear clipboard\t1";
-static const char *const menu_yes_no          = "Are you sure?\t-1\nYes\t1\nNo\t0";
 
 #ifdef CLIPBOARD
 static void
@@ -35,7 +28,8 @@ clippause(const unsigned int seconds)
 
 	switch (fork()) {
 	case -1:
-		die("fork:");
+		warn("fork:");
+		return;
 
 	case 0:
 		setsid();
@@ -163,21 +157,27 @@ mainmenu(void)
 	int    n;
 
 	n = snprintf(menu, sizeof(menu), "%s", menu_power);
-	if (n < 0 || (size_t)n >= sizeof(menu))
-		die("menu too long");
+	if (n < 0 || (size_t)n >= sizeof(menu)) {
+		warn("power menu too long");
+		return;
+	}
 	off = (size_t)n;
 
 #ifdef POWER_MANAGEMENT
 	n = snprintf(menu + off, sizeof(menu) - off, "%s", menu_power_optimus);
-	if (n < 0 || (size_t)n >= sizeof(menu) - off)
-		die("menu too long");
+	if (n < 0 || (size_t)n >= sizeof(menu) - off) {
+		warn("power menu too long");
+		return;
+	}
 	off += (size_t)n;
 #endif
 
 #ifdef CLIPBOARD
 	n = snprintf(menu + off, sizeof(menu) - off, "%s", menu_power_clipboard);
-	if (n < 0 || (size_t)n >= sizeof(menu) - off)
-		die("menu too long");
+	if (n < 0 || (size_t)n >= sizeof(menu) - off) {
+		warn("power menu too long");
+		return;
+	}
 	off += (size_t)n;
 #endif
 
@@ -231,27 +231,25 @@ mainmenu(void)
 }
 
 static void
-execbutton(void)
+on_left(void *ctx)
 {
-	const char *env = getenv("BLOCK_BUTTON");
-	if (!env || !*env)
-		return;
-
-	if (!strcmp(env, "1"))
-		mainmenu();
+	(void)ctx;
+	mainmenu();
 }
 
 int
 main(void)
 {
-	const enum Color def_cols[] = { clr_pwr };
+	static const struct Button buttons[] = {
+		{ 1, on_left },
+	};
 
 	set_name("dwmblocks-power");
-	clr_init(def_cols, LEN(def_cols));
+	clr_init();
 
-	execbutton();
+	dispatch(buttons, LEN(buttons), NULL);
 
-	printf("%s " CLR_NRM "\n", clr_get(clr_pwr));
+	printf("%s%s " CLR_NRM "\n", clr_get(clr_pwr), icon_power);
 
 	return 0;
 }

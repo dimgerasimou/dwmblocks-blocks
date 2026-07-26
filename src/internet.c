@@ -17,19 +17,9 @@
 #include "utils.h"
 #include "config.h"
 
-static const char *const notif_icons[]  = {"x", "tdenetworkmanager", "wifi-radar"};
-static const char *const status_icons[] = {
-	"󰤮 ", /* 0: no primary connection / unknown */
-	" ", /* 1: ethernet */
-	"󰤯 ", /* 2: wifi 0 */
-	"󰤟 ", /* 3: wifi 1 */
-	"󰤢 ", /* 4: wifi 2 */
-	"󰤥 ", /* 5: wifi 3 */
-	"󰤨 ", /* 6: wifi 4 */
-	"󰤫 "  /* 7: error */
-};
 
-static const enum Color status_icons_clr[] = {
+/* Colour per icon index, parallel to icons_internet in config.h. */
+static const enum Color icon_colors[] = {
 	clr_net_err,
 	clr_net_nrm,
 	clr_net_nrm,
@@ -40,12 +30,10 @@ static const enum Color status_icons_clr[] = {
 	clr_net_err
 };
 
-static const char *const menu_string = "󱛄 Toggle Wifi\t0\n󱛃 Connect to wifi\t1\n󱚾 TUI options\t2";
 
 /* function definitions */
 static void comapp(NMDevice *dev, GString *str);
 static void ethapp(NMDevice *dev, GString *str);
-static void execbutton(NMClient *c, int icind);
 static unsigned int getactive(NMClient *c);
 static void nminit(NMClient **c);
 static void printinfo(NMClient *c, const int ind);
@@ -55,7 +43,7 @@ static void wifiapp(NMDevice *dev, GString *str);
 static inline unsigned int
 clampstate(unsigned int s)
 {
-	const unsigned int n = (unsigned int)LEN(status_icons);
+	const unsigned int n = (unsigned int)LEN(icons_internet);
 	if (s >= n)
 		return 0;
 	return s;
@@ -122,39 +110,39 @@ ethapp(NMDevice *dev, GString *str)
 		g_string_append(str, "Ethernet\n");
 }
 
-static void
-execbutton(NMClient *c, int icind)
-{
-	const char *env = getenv("BLOCK_BUTTON");
-	if (!env || !*env)
-		return;
+struct Context {
+	NMClient *client;
+	int       icind;
+};
 
-	switch (atoi(env)) {
-	case 1:
-		printinfo(c, icind);
+static void
+on_left(void *ctx)
+{
+	const struct Context *c = ctx;
+
+	printinfo(c->client, c->icind);
+}
+
+static void
+on_right(void *ctx)
+{
+	const struct Context *c = ctx;
+
+	switch (getxmenuopt(menu_internet)) {
+	case 0:
+		togglewifi(c->client);
 		break;
 
-	case 3:
-		switch (getxmenuopt(menu_string)) {
-		case 0:
-			togglewifi(c);
-			break;
+	case 1: {
+		char path[PATH_MAX];
 
-		case 1: {
-			char path[PATH_MAX];
+		if (getpath(path_wifi_connect, path, sizeof(path)) == 0)
+			executepath(path, (char **)args_wifi_connect);
+		break;
+	}
 
-			if (getpath(path_wifi_connect, path, sizeof(path)) == 0)
-				executepath(path, (char **)args_wifi_connect);
-			break;
-		}
-
-		case 2:
-			execute((char **)args_tui_internet);
-			break;
-
-		default:
-			break;
-		}
+	case 2:
+		execute((char **)args_tui_internet);
 		break;
 
 	default:
@@ -235,7 +223,7 @@ printinfo(NMClient *c, const int ind)
 	icind = (unsigned int)(ind > 2 ? 2 : ind);
 
 	if (!devarr) {
-		notify("Network Devices Info", "No network devices detected", notif_icons[0]);
+		notify("Network Devices Info", "No network devices detected", icons_internet_notif[0]);
 		return;
 	}
 
@@ -264,9 +252,9 @@ printinfo(NMClient *c, const int ind)
 	}
 
 	if (str->len <= 1)
-		notify("Network Devices Info", "No network devices detected", notif_icons[icind]);
+		notify("Network Devices Info", "No network devices detected", icons_internet_notif[icind]);
 	else
-		notify("Network Devices Info", str->str, notif_icons[icind]);
+		notify("Network Devices Info", str->str, icons_internet_notif[icind]);
 
 	g_string_free(str, TRUE);
 }
@@ -279,7 +267,7 @@ togglewifi(NMClient *client)
 	nm_client_wireless_set_enabled(client, !current);
 
 	const char *msg = current ? "WiFi Disabled" : "WiFi Enabled";
-	notify("WiFi Status", msg, notif_icons[2]);
+	notify("WiFi Status", msg, icons_internet_notif[2]);
 }
 
 static void
@@ -333,27 +321,32 @@ wifiapp(NMDevice *dev, GString *str)
 int
 main(void)
 {
-	const enum Color def_cols[] = { clr_net_err, clr_net_nrm };
+	static const struct Button buttons[] = {
+		{ 1, on_left },
+		{ 3, on_right },
+	};
 
-	unsigned int state = 0;
-	NMClient *client = NULL;
+	struct Context c = { NULL, 0 };
+	unsigned int   state = 0;
 
 	set_name("dwmblocks-internet");
-	clr_init(def_cols, LEN(def_cols));
+	clr_init();
 
-	nminit(&client);
+	nminit(&c.client);
 
-	if (client) {
-		state = getactive(client);
-		state = clampstate(state);
-		execbutton(client, (int)state);
-		g_object_unref(client);
+	if (c.client) {
+		state   = clampstate(getactive(c.client));
+		c.icind = (int)state;
+
+		dispatch(buttons, LEN(buttons), &c);
+
+		g_object_unref(c.client);
 	} else {
 		state = 7;
 	}
 
 	state = clampstate(state);
-	printf("%s%s" CLR_NRM "\n", clr_get(status_icons_clr[state]), status_icons[state]);
+	printf("%s%s" CLR_NRM "\n", clr_get(icon_colors[state]), icons_internet[state]);
 
 	return 0;
 }

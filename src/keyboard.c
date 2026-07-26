@@ -72,33 +72,26 @@ nth_csv_token_dup(const char *s, unsigned int n)
 }
 
 static void
-execbutton(void)
+on_left(void *ctx)
 {
-	const char *env = getenv("BLOCK_BUTTON");
-	if (!env || !*env)
+	char path[PATH_MAX];
+
+	(void)ctx;
+
+	if (getpath(path_language_switch, path, sizeof(path)) != 0) {
+		warn("getpath() failed for language switch");
 		return;
-
-	switch (atoi(env)) {
-	case 1: {
-		char path[PATH_MAX];
-
-		if (getpath(path_language_switch, path, sizeof(path)) != 0) {
-			warn("getpath() failed for language switch");
-			return;
-		}
-
-		executepath(path, (char **)args_language_switch);
-		break;
 	}
-	default:
-		break;
-	}
+
+	executepath(path, (char **)args_language_switch);
 }
 
 int
 main(void)
 {
-	const enum Color def_cols[] = { clr_kbd };
+	static const struct Button buttons[] = {
+		{ 1, on_left },
+	};
 
 	Display *dpy = NULL;
 	XkbStateRec state;
@@ -106,13 +99,15 @@ main(void)
 	char *layout = NULL;
 
 	set_name("dwmblocks-keyboard");
-	clr_init(def_cols, LEN(def_cols));
+	clr_init();
 
-	execbutton();
+	dispatch(buttons, LEN(buttons), NULL);
 
 	dpy = XOpenDisplay(NULL);
-	if (!dpy)
-		die("XOpenDisplay() failed");
+	if (!dpy) {
+		warn("XOpenDisplay() failed");
+		goto cleanup;
+	}
 
 	if (XkbGetState(dpy, XkbUseCoreKbd, &state) != Success) {
 		warn("XkbGetState() failed");

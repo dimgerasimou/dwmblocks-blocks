@@ -32,7 +32,7 @@ Useful variables:
 | `BLOCKS`   | all blocks               | Which blocks to build and install          |
 | `COLOR`    | `1`                      | Set to `0` for uncoloured build output     |
 
-The warning flags are held in a separate `WARNINGS` variable, so overriding `CFLAGS` does not switch them off.
+The warning flags are held in a separate `WARNINGS` variable, so overriding `CFLAGS` does not switch them off. Dependency include paths are passed as `-isystem` rather than `-I`, so the strict warning set applies to this project's code and not to third-party headers.
 
 Other targets:
 
@@ -65,6 +65,12 @@ Per block, additionally: `libxkbfile` (keyboard), `dbus-1` (bluetooth), `libnm` 
 
 Colours are read at runtime from the X resource database, so changing a colour does not require a rebuild. There is no `colorscheme.h`; that file was removed and is no longer needed.
 
+Resolved colours are cached in `$XDG_RUNTIME_DIR/dwmblocks-colors`, so only the first block to run in a session opens an X connection. The cache is rebuilt automatically when `~/.Xresources` is newer than it, and `$XDG_RUNTIME_DIR` is cleared at logout. To force a rebuild mid-session:
+
+```bash
+rm -f "$XDG_RUNTIME_DIR/dwmblocks-colors"
+```
+
 Each colour is looked up first as `dwmblocks.<name>`, then as `*<name>`. Values must be exactly `#RRGGBB`. Anything missing or malformed is skipped, and the block renders in the status bar's default colour.
 
 Example `~/.Xresources`:
@@ -92,11 +98,19 @@ Apply with `xrdb -merge ~/.Xresources`.
 
 Building with `-DNO_COLOR` compiles the colour lookup out entirely; every block then emits plain, uncoloured text and no longer needs an X connection for colours.
 
-The calendar drawn by the date block uses Pango markup rather than the status bar's colour escapes, so its accent colour is a compile-time setting. Override it by defining `CAL_ACCENT` in `config.h`:
+If X is unreachable, blocks warn once on stderr and render without colour rather than failing.
+
+The calendar drawn by the date block uses Pango markup rather than the status bar's colour escapes, so its accent colour is a compile-time setting, found in the date section of `config.h`:
 
 ```c
 #define CAL_ACCENT "#F38BA8"
 ```
+
+## Icons and menus
+
+Every icon and xmenu prompt lives in `config.h` alongside the commands it belongs with, so changing a glyph never means editing source. Look for `icons_battery`, `icon_time`, `menu_power`, and friends under the matching `#ifdef` block.
+
+Icons are Nerd Font glyphs, so a patched font must be configured in the window manager for them to render.
 
 ## Blocks
 
@@ -106,7 +120,7 @@ Here is a list of the blocks, with a summary of their functions and dependencies
 
 #### Usage
 
-Reports the battery level, status and optionally the power manager's status. The battery is located automatically by scanning `/sys/class/power_supply` for the first device whose `type` is `Battery`, so no path needs configuring.
+Reports the battery level, status and optionally the power manager's status. The battery is located automatically by scanning `/sys/class/power_supply` for the first device whose `type` is `Battery`, so no path needs configuring. With no battery present the block renders the empty icon rather than disappearing.
 
 Left click notifies the current capacity and status.
 
@@ -169,6 +183,10 @@ Optional:
 Returns the current kernel version and the number of packages to be updated, notifies the number of AUR or pacman packages to be upgraded, and can perform a system upgrade.
 
 Left click notifies the update counts; right click runs the upgrade command.
+
+Note that `checkupdates` exits 2 and `paru` exits 1 when there is nothing to update, so the exit status is ignored and only the line count is used.
+
+Both update commands query the network, so their results are cached in `$XDG_RUNTIME_DIR/dwmblocks-updates` for `update_cache_ttl` seconds (one hour by default; set it in `config.h`). A left click always bypasses the cache and refreshes. If you run a pacman hook, writing `"<aur> <pacman>"` to that file is a cheaper way to keep the count current.
 
 #### Dependencies
 
@@ -245,6 +263,19 @@ Optional:
 
 ## Development
 
+Blocks never abort on the render path: a failure warns on stderr and prints a placeholder, because a block that exits silently leaves the bar showing stale text.
+
+Click handling is table-driven. A block declares which buttons it answers and `dispatch()` in `utils` does the rest:
+
+```c
+static const struct Button buttons[] = {
+	{ 1, on_left },
+	{ 3, on_right },
+};
+
+dispatch(buttons, LEN(buttons), NULL);
+```
+
 The build uses a strict warning set (`-Wconversion`, `-Wsign-conversion`, `-Wshadow`, `-Wformat=2`, and friends) and the tree builds warning-free. Please keep it that way.
 
 ```bash
@@ -252,7 +283,9 @@ make test    # unit tests, run under AddressSanitizer and UBSan
 make debug   # full rebuild with sanitizers and, on GCC, -fanalyzer
 ```
 
-Tests live in `src/tests/`. `make test` builds and runs each one; a non-zero exit fails the build.
+Tests live in `src/tests/`. `make test` builds and runs each one; a non-zero exit fails the build. `test-calendar` checks the date arithmetic against `mktime` for every day between 2020 and 2030.
+
+CI builds every combination of the `POWER_MANAGEMENT`, `CLIPBOARD` and `NO_COLOR` toggles under both GCC and Clang. Config branches that are never compiled are exactly the ones that rot, so please keep the matrix green rather than trimming it.
 
 ## License
 

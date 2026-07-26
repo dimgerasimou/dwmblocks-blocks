@@ -4,33 +4,38 @@
 #include <time.h>
 
 #define TIME_C
-#define LEN(a) (sizeof(a) / sizeof((a)[0]))
 
-#include "config.h"
-#include "utils.h"
 #include "colors.h"
+#include "utils.h"
+#include "config.h"
 
 int
 main(void)
 {
-	const enum Color def_cols[] = { clr_tim };
-
 	struct tm *lt = NULL;
 	time_t     ct = 0;
 
 	set_name("dwmblocks-time");
-	clr_init(def_cols, LEN(def_cols));
+	clr_init();
 
 	ct = time(NULL);
 	lt = localtime(&ct);
-	if (!lt)
-		die("localtime:");
 
 	printf("%s", clr_get(clr_tim));
 
 	if (show_icon)
-		printf(" ");
+		printf("%s", icon_time);
 
-	printf("%.2d:%.2d" CLR_NRM "\n", lt->tm_hour, lt->tm_min);
+	/*
+	 * A block that exits without printing leaves the bar showing stale
+	 * text, so failures still emit a placeholder.
+	 */
+	if (lt)
+		printf("%.2d:%.2d" CLR_NRM "\n", lt->tm_hour, lt->tm_min);
+	else {
+		warn("localtime:");
+		printf("--:--" CLR_NRM "\n");
+	}
+
 	return 0;
 }

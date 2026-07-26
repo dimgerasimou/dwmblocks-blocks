@@ -34,6 +34,21 @@ void notify(const char *sum, const char *body, const char *icon);
  */
 void uitoa(const unsigned int in, char *out, const size_t outsz);
 
+/* One entry of a block's BLOCK_BUTTON dispatch table. */
+struct Button {
+	int   button;
+	void (*handler)(void *ctx);
+};
+
+/*
+ * Reads BLOCK_BUTTON and runs the matching handler, passing 'ctx' through.
+ * Does nothing if the variable is unset, empty, or matches no entry.
+ */
+void dispatch(const struct Button *buttons, const size_t n, void *ctx);
+
+/* Returns 1 if 's' is exactly "#RRGGBB". */
+int ishexcolor(const char *s);
+
 /*
  * Forks and execs 'args' in a new session, searching PATH for args[0].
  * The child never returns.

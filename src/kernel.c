@@ -2,26 +2,41 @@
 
 #define _POSIX_C_SOURCE 200809L
 
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <sys/utsname.h>
+#include <time.h>
+#include <unistd.h>
 
 #define KERNEL_C
-#define BUF_SIZE  64
-#define BODY_SIZE 128
-#define LEN(a)    (sizeof(a) / sizeof((a)[0]))
+#define BUF_SIZE   64
+#define BODY_SIZE  128
+#define CACHE_NAME "dwmblocks-updates"
+#define LEN(a)     (sizeof(a) / sizeof((a)[0]))
 
 #include "colors.h"
 #include "utils.h"
 #include "config.h"
 
-static unsigned int
+struct Updates {
+	int aur;
+	int pm;
+};
+
+/*
+ * Counts the lines produced by 'cmd'. These commands query the network
+ * (paru hits the AUR RPC, checkupdates syncs a temporary database), which
+ * is why the result is cached rather than recomputed every refresh.
+ */
+static int
 getupdates(const char *cmd)
 {
 	FILE *ep;
-	char buffer[BUF_SIZE];
-	unsigned int counter = 0;
+	char  buffer[BUF_SIZE];
+	int   counter = 0;
 
 	if (!cmd || !*cmd)
 		return 0;
@@ -29,74 +44,173 @@ getupdates(const char *cmd)
 	ep = popen(cmd, "r");
 	if (!ep) {
 		warn("popen() for: %s", cmd);
-		return 0;
+		return -1;
 	}
 
 	while (fgets(buffer, sizeof(buffer), ep))
 		counter++;
 
-	(void)pclose(ep);
+	/*
+	 * The exit status is deliberately ignored: checkupdates exits 2 and
+	 * paru exits 1 when there is simply nothing to update, so a non-zero
+	 * status is the normal case rather than a failure.
+	 */
+	pclose(ep);
 
 	return counter;
 }
 
-static void
-execbutton(int *aur, int *pm)
+static int
+cachepath(char *out, const size_t outsz)
 {
-	const char *env;
+	const char *dir = getenv("XDG_RUNTIME_DIR");
+	int         n;
 
-	env = getenv("BLOCK_BUTTON");
-	if (!env || !*env)
+	if (dir && *dir)
+		n = snprintf(out, outsz, "%s/%s", dir, CACHE_NAME);
+	else
+		n = snprintf(out, outsz, "/tmp/%s-%u", CACHE_NAME,
+		             (unsigned int)getuid());
+
+	return (n < 0 || (size_t)n >= outsz) ? 1 : 0;
+}
+
+/* Returns 0 and fills 'u' if a cache entry exists and is younger than the TTL. */
+static int
+cacheload(const char *path, struct Updates *u)
+{
+	struct stat st;
+	FILE       *fp;
+	int         ok;
+
+	if (stat(path, &st) != 0)
+		return 1;
+
+	if (time(NULL) - st.st_mtime > update_cache_ttl)
+		return 1;
+
+	fp = fopen(path, "r");
+	if (!fp)
+		return 1;
+
+	ok = (fscanf(fp, "%d %d", &u->aur, &u->pm) == 2);
+	fclose(fp);
+
+	return ok ? 0 : 1;
+}
+
+/* Written via a temporary file so concurrent blocks never see a partial cache. */
+static void
+cachestore(const char *path, const struct Updates *u)
+{
+	char  tmp[PATH_MAX];
+	FILE *fp;
+	int   fd, n;
+
+	n = snprintf(tmp, sizeof(tmp), "%s.XXXXXX", path);
+	if (n < 0 || (size_t)n >= sizeof(tmp))
 		return;
 
-	switch (atoi(env)) {
-	case 1: {
-		char body[BODY_SIZE];
-		int  n;
+	fd = mkstemp(tmp);
+	if (fd < 0)
+		return;
 
-		*aur = (int)getupdates(cmd_aur_updates);
-		*pm  = (int)getupdates(cmd_pm_updates);
-
-		n = snprintf(body, sizeof(body),
-		             "󰏖 Pacman Updates: %d\n"
-		             " AUR Updates: %d",
-		             *pm, *aur);
-
-		if (n < 0 || (size_t)n >= sizeof(body))
-			warn("notification body truncated");
-
-		notify("Packages", body, "tux");
-		break;
+	fp = fdopen(fd, "w");
+	if (!fp) {
+		close(fd);
+		unlink(tmp);
+		return;
 	}
 
-	case 3:
-		execute((char **)args_update_cmd);
-		break;
+	fprintf(fp, "%d %d\n", u->aur, u->pm);
 
-	default:
-		break;
+	if (fclose(fp) != 0 || rename(tmp, path) != 0)
+		unlink(tmp);
+}
+
+/* Runs the update commands and refreshes the cache. */
+static void
+refresh(struct Updates *u)
+{
+	char path[PATH_MAX];
+
+	u->aur = getupdates(cmd_aur_updates);
+	u->pm  = getupdates(cmd_pm_updates);
+
+	if (u->aur < 0 || u->pm < 0)
+		return;
+
+	if (cachepath(path, sizeof(path)) == 0)
+		cachestore(path, u);
+}
+
+/*
+ * Returns the update counts, preferring a fresh cache entry. Negative
+ * counts mean the query failed and nothing should be displayed.
+ */
+static void
+getcounts(struct Updates *u)
+{
+	char path[PATH_MAX];
+
+	if (cachepath(path, sizeof(path)) == 0 && cacheload(path, u) == 0)
+		return;
+
+	refresh(u);
+}
+
+static void
+on_left(void *ctx)
+{
+	struct Updates *u = ctx;
+	char            body[BODY_SIZE];
+	int             n;
+
+	/* An explicit click is a request for current numbers, so bypass the cache. */
+	refresh(u);
+
+	if (u->aur < 0 || u->pm < 0) {
+		notify("Packages", "Failed to query package updates.", "tux");
+		return;
 	}
+
+	n = snprintf(body, sizeof(body),
+	             "%s Pacman Updates: %d\n"
+	             "%s AUR Updates: %d",
+	             icon_kernel_pacman, u->pm, icon_kernel_aur, u->aur);
+
+	if (n < 0 || (size_t)n >= sizeof(body))
+		warn("notification body truncated");
+
+	notify("Packages", body, "tux");
+}
+
+static void
+on_right(void *ctx)
+{
+	(void)ctx;
+	execute((char **)args_update_cmd);
 }
 
 int
 main(void)
 {
-	const enum Color def_cols[] = { clr_krn_pkg, clr_krn_nrm };
+	static const struct Button buttons[] = {
+		{ 1, on_left },
+		{ 3, on_right },
+	};
 
-	struct utsname un;
-	char          *release = NULL;
-	int            aur = -1;
-	int            pm  = -1;
+	struct utsname  un;
+	struct Updates  u = { -1, -1 };
+	char           *release = NULL;
 
 	set_name("dwmblocks-kernel");
-	clr_init(def_cols, LEN(def_cols));
+	clr_init();
 
-	execbutton(&aur, &pm);
+	dispatch(buttons, LEN(buttons), &u);
 
-	if (aur == -1)
-		aur = (int)getupdates(cmd_aur_updates);
-	if (pm == -1)
-		pm = (int)getupdates(cmd_pm_updates);
+	if (u.aur < 0 || u.pm < 0)
+		getcounts(&u);
 
 	if (show_release) {
 		if (uname(&un) != 0) {
@@ -112,13 +226,13 @@ main(void)
 		}
 	}
 
-	if ((aur + pm) > 0) {
-		printf("%s󰏖 ", clr_get(clr_krn_pkg));
+	if (u.aur > 0 || u.pm > 0) {
+		printf("%s%s ", clr_get(clr_krn_pkg), icon_kernel_pkg);
 		if (show_update_count)
-			printf("%d ", aur + pm);
+			printf("%d ", u.aur + u.pm);
 	}
 
-	printf("%s", clr_get(clr_krn_nrm));
+	printf("%s%s", clr_get(clr_krn_nrm), icon_kernel_tux);
 
 	if (show_release && release && *release)
 		printf(" %s", release);

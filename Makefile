@@ -40,13 +40,19 @@ TEST_DIR  := $(BUILD_DIR)/tests
 
 # Per-library flags. Each block pulls in only what it actually uses, so a
 # missing libnm does not stop you building the clock.
-NOTIFY_CFLAGS := $(shell pkg-config --cflags libnotify)
+#
+# Dependency include paths are rewritten from -I to -isystem: the strict
+# warning set applies to this project's code, not to third-party headers.
+# (libnm's nm-dbus-interface.h, for one, is not -Wpedantic clean.)
+sysinc = $(patsubst -I%,-isystem %,$(shell pkg-config --cflags $(1)))
+
+NOTIFY_CFLAGS := $(call sysinc,libnotify)
 NOTIFY_LIBS   := $(shell pkg-config --libs libnotify)
-NM_CFLAGS     := $(shell pkg-config --cflags libnm glib-2.0)
+NM_CFLAGS     := $(call sysinc,libnm glib-2.0)
 NM_LIBS       := $(shell pkg-config --libs libnm glib-2.0)
-PULSE_CFLAGS  := $(shell pkg-config --cflags libpulse)
+PULSE_CFLAGS  := $(call sysinc,libpulse)
 PULSE_LIBS    := $(shell pkg-config --libs libpulse)
-DBUS_CFLAGS   := $(shell pkg-config --cflags dbus-1)
+DBUS_CFLAGS   := $(call sysinc,dbus-1)
 DBUS_LIBS     := $(shell pkg-config --libs dbus-1)
 
 # utils.c always needs libnotify; colors.c always needs Xlib.
@@ -56,6 +62,11 @@ COMMON_LIBS   := $(NOTIFY_LIBS) -lX11
 # Shared objects linked into every block
 UTILS_SRC := $(SRC_DIR)/utils.c $(SRC_DIR)/colors.c
 UTILS_OBJ := $(OBJ_DIR)/utils.o $(OBJ_DIR)/colors.o
+
+# Blocks that need extra objects beyond the shared pair. Both a
+# prerequisite (so it gets built) and a variable (so it gets linked).
+$(BIN_DIR)/date: EXTRA_OBJS := $(OBJ_DIR)/calendar.o
+$(BIN_DIR)/date: $(OBJ_DIR)/calendar.o
 
 # Block configuration - comment out blocks you don't need
 BLOCKS := time \
@@ -72,7 +83,7 @@ BLOCKS := time \
 BLOCK_SRCS := $(addprefix $(SRC_DIR)/, $(addsuffix .c, $(BLOCKS)))
 BLOCK_OBJS := $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(BLOCKS)))
 BINARIES   := $(addprefix $(BIN_DIR)/, $(BLOCKS))
-DEPS       := $(BLOCK_OBJS:.o=.d) $(UTILS_OBJ:.o=.d)
+DEPS       := $(BLOCK_OBJS:.o=.d) $(UTILS_OBJ:.o=.d) $(OBJ_DIR)/calendar.d
 
 # Per-block extras, applied to both the compile and the link
 $(OBJ_DIR)/keyboard.o  $(BIN_DIR)/keyboard:  BLOCK_LIBS := -lxkbfile
@@ -84,9 +95,11 @@ $(OBJ_DIR)/volume.o    $(BIN_DIR)/volume:    BLOCK_CFLAGS := $(PULSE_CFLAGS)
 $(OBJ_DIR)/volume.o    $(BIN_DIR)/volume:    BLOCK_LIBS := $(PULSE_LIBS) -lm
 
 # Test binaries
-TEST_UTILS     := $(TEST_DIR)/test-utils
-TEST_UTILS_SRC := $(TESTS_DIR)/test-utils.c $(SRC_DIR)/utils.c
-TESTS          := $(TEST_UTILS)
+TEST_UTILS        := $(TEST_DIR)/test-utils
+TEST_UTILS_SRC    := $(TESTS_DIR)/test-utils.c $(SRC_DIR)/utils.c
+TEST_CALENDAR     := $(TEST_DIR)/test-calendar
+TEST_CALENDAR_SRC := $(TESTS_DIR)/test-calendar.c $(SRC_DIR)/calendar.c
+TESTS             := $(TEST_UTILS) $(TEST_CALENDAR)
 TEST_CFLAGS    := $(filter-out -Os,$(CFLAGS)) $(WARNINGS) $(DEBUG_CFLAGS) $(DEBUG_LDFLAGS)
 
 # Pretty output
@@ -118,7 +131,7 @@ debug: clean all
 
 $(BIN_DIR)/%: $(OBJ_DIR)/%.o $(UTILS_OBJ) | $(BIN_DIR)
 	@$(PRINTF) "$(COLOR_GREEN)Linking:$(COLOR_RESET) %s\n" "$@"
-	@$(CC) $(LDFLAGS) -o $@ $< $(UTILS_OBJ) $(COMMON_LIBS) $(BLOCK_LIBS) $(LDLIBS)
+	@$(CC) $(LDFLAGS) -o $@ $< $(UTILS_OBJ) $(EXTRA_OBJS) $(COMMON_LIBS) $(BLOCK_LIBS) $(LDLIBS)
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c config.h | $(OBJ_DIR)
 	@$(PRINTF) "$(COLOR_BLUE)Compiling:$(COLOR_RESET) %s\n" "$@"
@@ -159,6 +172,10 @@ $(TEST_UTILS): $(TEST_UTILS_SRC) config.h | $(TEST_DIR)
 	@$(PRINTF) "$(COLOR_BLUE)Building:$(COLOR_RESET) %s\n" "$@"
 	@$(CC) $(CPPFLAGS) $(TEST_CFLAGS) $(COMMON_CFLAGS) -o $@ \
 		$(TEST_UTILS_SRC) $(NOTIFY_LIBS)
+
+$(TEST_CALENDAR): $(TEST_CALENDAR_SRC) config.h | $(TEST_DIR)
+	@$(PRINTF) "$(COLOR_BLUE)Building:$(COLOR_RESET) %s\n" "$@"
+	@$(CC) $(CPPFLAGS) $(TEST_CFLAGS) -o $@ $(TEST_CALENDAR_SRC)
 
 -include $(DEPS)
 

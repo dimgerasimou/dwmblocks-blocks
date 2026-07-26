@@ -14,6 +14,16 @@ static const char term_title_opt[] = "-t";
 /* Enable power management features (optimus-manager support) */
 #define POWER_MANAGEMENT
 
+
+/* Status icons, ordered from empty to full; the last is "charging". */
+static const char *const icons_battery[] = {
+	" ",
+	" ",
+	" ",
+	" ",
+	" ",
+	" ",
+};
 #endif
 
 /* ============================================================
@@ -24,6 +34,12 @@ static const char term_title_opt[] = "-t";
 /* TUI application for bluetooth settings */
 const char *bt_tui_cmd[] = { term_cmd, "bluetuith", NULL };
 
+
+/* Status icons: [0] disabled, [1] enabled. */
+static const char *const icons_bluetooth[] = {
+	"󰂲",
+	"󰂯",
+};
 #endif
 
 /* ============================================================
@@ -42,6 +58,12 @@ const char *args_gui_calendar[] = {
 	NULL
 };
 
+
+/* Icon shown in the bar when show_icon is set. */
+static const char icon_date[] = " ";
+
+/* Accent colour for weekends and the current day (Pango markup). */
+#define CAL_ACCENT "#F38BA8"
 #endif
 
 /* ============================================================
@@ -61,6 +83,28 @@ const char *args_tui_internet[] = {
 const char *path_wifi_connect[] = {"$HOME", ".local", "bin", "dmenu-wifi-prompt", NULL};
 const char *args_wifi_connect[] = {"dmenu-wifi-prompt", NULL};
 
+
+/* Bar icons, indexed by connection state. */
+static const char *const icons_internet[] = {
+	"󰤮 ",  /* 0: no primary connection / unknown */
+	" ",  /* 1: ethernet */
+	"󰤯 ",  /* 2: wifi 0 */
+	"󰤟 ",  /* 3: wifi 1 */
+	"󰤢 ",  /* 4: wifi 2 */
+	"󰤥 ",  /* 5: wifi 3 */
+	"󰤨 ",  /* 6: wifi 4 */
+	"󰤫 ",  /* 7: error */
+};
+
+/* Notification icons: [0] error, [1] wired, [2] wireless. */
+static const char *const icons_internet_notif[] = {
+	"x",
+	"tdenetworkmanager",
+	"wifi-radar",
+};
+
+/* xmenu prompt. Each line is "<label>\t<value>". */
+static const char menu_internet[] = "󱛄 Toggle Wifi\t0\n󱛃 Connect to wifi\t1\n󱚾 TUI options\t2";
 #endif
 
 /* ============================================================
@@ -87,6 +131,15 @@ const unsigned int show_release = 1;
 /* Show update count in bar*/
 const unsigned int show_update_count = 1;
 
+
+/* Bar icons: the kernel (tux) glyph and the pending-updates glyph. */
+static const char icon_kernel_tux[] = "";
+static const char icon_kernel_pkg[] = "󰏖";
+static const char icon_kernel_pacman[] = "󰏖";
+static const char icon_kernel_aur[] = "";
+
+/* Seconds before cached update counts are refreshed. */
+static const long update_cache_ttl = 3600;
 #endif
 
 /* ============================================================
@@ -100,6 +153,9 @@ const unsigned int show_icon = 1;
 const char *path_language_switch[] = { "$HOME", ".local", "bin", "dwm-xkbnext", NULL };
 const char *args_language_switch[] = { "dwm-xkbnext", NULL };
 
+
+/* Icon shown in the bar when show_icon is set. */
+static const char icon_keyboard[] = " ";
 #endif
 
 /* ============================================================
@@ -112,6 +168,9 @@ const unsigned int show_icon = 1;
 /* Task manager application */
 const char *args_task_manager[] = { term_cmd, "sh", "-c", "htop", NULL };
 
+
+/* Icon shown in the bar when show_icon is set. */
+static const char icon_memory[] = " ";
 #endif
 
 /* ============================================================
@@ -135,6 +194,17 @@ const char *args_lockscreen[]       = {"slock", NULL};
 /* Clipboard management */
 const char *args_clipboard_delete[] = {"sh", "-c", "clipdel -d \".*\"", NULL};
 
+
+/* Bar icon. */
+static const char icon_power[] = "";
+
+/* xmenu prompts. Each line is "<label>\t<value>". */
+static const char menu_power[] = " Shutdown\t0\n Reboot\t1\n\n󰗽 Logout\t2\n Lock\t3\n\n Restart DwmBlocks\t4";
+static const char menu_power_optimus[] = "\n󰘚 Optimus Manager\t5";
+static const char menu_power_clipboard[] = "\n󰅌 Clipmenu\t6";
+static const char menu_optimus[] = "Integrated\t0\nHybrid\t1\nNvidia\t2";
+static const char menu_clipboard[] = "Pause clipmenu for 1 minute\t0\nClear clipboard\t1";
+static const char menu_yes_no[] = "Are you sure?\t-1\nYes\t1\nNo\t0";
 #endif
 
 /* ============================================================
@@ -144,6 +214,9 @@ const char *args_clipboard_delete[] = {"sh", "-c", "clipdel -d \".*\"", NULL};
 
 const unsigned int show_icon = 1;
 
+
+/* Icon shown in the bar when show_icon is set. */
+static const char icon_time[] = " ";
 #endif
 
 
@@ -171,6 +244,19 @@ const char *args_volume_decrase[]  = {"dwm-audio", "down", NULL};
 const char *args_volume_mute[]     = {"dwm-audio", "mute", NULL};
 const char *path_volume_control[]  = {"$HOME", ".local", "bin", "dwm-audio", NULL};
 
+
+/* Bar icons: [0] muted, [1] low, [2] medium, [3] high, [4] no sink. */
+static const char *const icons_volume[] = {
+	" ",
+	" ",
+	" ",
+	" ",
+	"",
+};
+
+/* Notification icons for the default sink and source. */
+static const char icon_vol_sink[] = "";
+static const char icon_vol_source[] = "";
 #endif
 
 #endif /* CONFIG_H */

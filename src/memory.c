@@ -14,6 +14,10 @@
 #include "utils.h"
 #include "config.h"
 
+/*
+ * Returns used memory in KiB (MemTotal - MemAvailable), or -1 if
+ * /proc/meminfo could not be read or parsed.
+ */
 static long
 getmemoryusage_kib(void)
 {
@@ -23,8 +27,10 @@ getmemoryusage_kib(void)
 	long  avail = -1;
 
 	fp = fopen("/proc/meminfo", "r");
-	if (!fp)
-		die("fopen() failed for: \"/proc/meminfo\":");
+	if (!fp) {
+		warn("fopen() failed for: \"/proc/meminfo\":");
+		return -1;
+	}
 
 	while (fgets(buffer, sizeof(buffer), fp)) {
 		if (strncmp(buffer, "MemTotal:", 9) == 0) {
@@ -43,10 +49,9 @@ getmemoryusage_kib(void)
 
 	if (total < 0 || avail < 0) {
 		warn("Failed to parse MemTotal/MemAvailable");
-		return 0;
+		return -1;
 	}
 
-	/* used = total - available */
 	if (avail > total)
 		return 0;
 
@@ -54,39 +59,37 @@ getmemoryusage_kib(void)
 }
 
 static void
-execbutton(void)
+on_right(void *ctx)
 {
-	const char *env = getenv("BLOCK_BUTTON");
-	if (!env || !*env)
-		return;
-
-	switch (atoi(env)) {
-	case 3:
-		execute((char **)args_task_manager);
-		break;
-	default:
-		break;
-	}
+	(void)ctx;
+	execute((char **)args_task_manager);
 }
 
 int
 main(void)
 {
-	const enum Color def_cols[] = { clr_mem };
+	static const struct Button buttons[] = {
+		{ 3, on_right },
+	};
 
 	long used_kib;
 
 	set_name("dwmblocks-memory");
-	clr_init(def_cols, LEN(def_cols));
+	clr_init();
 
-	execbutton();
+	dispatch(buttons, LEN(buttons), NULL);
 
 	used_kib = getmemoryusage_kib();
 
 	printf("%s", clr_get(clr_mem));
-	if (show_icon)
-		printf(" ");
 
-	printf("%.1fGiB" CLR_NRM "\n", (double)used_kib / 1024.0 / 1024.0);
+	if (show_icon)
+		printf("%s", icon_memory);
+
+	if (used_kib < 0)
+		printf("--" CLR_NRM "\n");
+	else
+		printf("%.1fGiB" CLR_NRM "\n", (double)used_kib / 1024.0 / 1024.0);
+
 	return 0;
 }

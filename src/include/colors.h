@@ -3,8 +3,6 @@
 #ifndef COLORS_H
 #define COLORS_H
 
-#include <stddef.h>
-
 #define CLR_NRM "^d^"
 
 enum Color {
@@ -28,10 +26,14 @@ enum Color {
 };
 
 /*
- * Loads the given colours from the X resource database. Colours that are
- * absent or malformed are left unset and render as the empty string.
+ * Makes the colour table available to clr_get(). Resolved colours are
+ * cached for the session, so only the first block to run in a session
+ * pays for an X connection.
+ *
+ * Never fails: if the cache is unusable and X is unreachable, every
+ * colour is left unset and blocks render in the bar's default colour.
  */
-void clr_init(const enum Color clrs[], size_t clrs_num);
+void clr_init(void);
 
 /*
  * Returns the dwm colour escape for 'clr', or "" if it was never loaded.
