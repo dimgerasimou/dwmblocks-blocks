@@ -4,20 +4,26 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include <unistd.h>
 
 #define DATE_C
 #define BUFFER_SIZE 64
+#define CAL_SIZE    2048
+#define LEN(a)      (sizeof(a) / sizeof((a)[0]))
+
+/* Colour used for weekend columns and the current day (Pango markup). */
+#ifndef CAL_ACCENT
+#define CAL_ACCENT "#F38BA8"
+#endif
 
 #include "colors.h"
 #include "utils.h"
 #include "config.h"
 
-const char *months_string[] = {"January",   "February", "March",     "April",
+static const char *const months_string[] = {"January",   "February", "March",     "April",
                                "May",       "June",     "July",      "August",
                                "September", "October",  "November", "December"};
 
-const int  days_in_month[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+static const int days_in_month[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
 
 static int
 getfirstday(int mday, int wday)
@@ -50,89 +56,110 @@ getmonthdays(const int m, const int y)
 	return 28;
 }
 
-static char*
-getcalendar(const int mday, const int wday, const int m, const int y)
+/*
+ * Renders the month as Pango markup into 'buf', one week per line,
+ * Monday first. Returns 0 on success, 1 if the buffer was too small.
+ */
+static int
+getcalendar(char *buf, const size_t bufsz, const int mday, const int wday,
+            const int m, const int y)
 {
-	char buf[BUFFER_SIZE];
-	char *ret  = NULL;
-	int  fday  = 0;
-	int  daysm = 0;
-	int  n     = 0;
+	size_t off   = 0;
+	int    fday  = 0;
+	int    daysm = 0;
+	int    n     = 0;
 
 	fday  = getfirstday(mday, wday);
 	daysm = getmonthdays(m, y);
-	ret   = strdup("Mo Tu We Th Fr <span color='#F38BA8'>Sa Su</span>\n");
 
-	for (int i = 0; i < fday; i++)
-		strapp(&ret, "   ");
+	n = snprintf(buf, bufsz,
+	             "Mo Tu We Th Fr <span color='" CAL_ACCENT "'>Sa Su</span>\n");
+	if (n < 0 || (size_t)n >= bufsz)
+		return 1;
+	off = (size_t)n;
+
+	for (int i = 0; i < fday; i++) {
+		n = snprintf(buf + off, bufsz - off, "   ");
+		if (n < 0 || (size_t)n >= bufsz - off)
+			return 1;
+		off += (size_t)n;
+	}
 
 	for (int i = 1; i <= daysm; i++) {
 		if (fday == 7) {
 			fday = 0;
-			strapp(&ret, "\n");
+			n = snprintf(buf + off, bufsz - off, "\n");
+			if (n < 0 || (size_t)n >= bufsz - off)
+				return 1;
+			off += (size_t)n;
 		}
 
 		if (i == mday)
-			n = snprintf(buf, sizeof(buf), "<span color='black' bgcolor='#F38BA8'>%2d</span> ", i);
+			n = snprintf(buf + off, bufsz - off,
+			             "<span color='black' bgcolor='" CAL_ACCENT "'>%2d</span> ", i);
 		else if (fday == 5 || fday == 6)
-			n = snprintf(buf, sizeof(buf), "<span color='#F38BA8'>%2d</span> ", i);
+			n = snprintf(buf + off, bufsz - off,
+			             "<span color='" CAL_ACCENT "'>%2d</span> ", i);
 		else
-			n = snprintf(buf, sizeof(buf), "%2d ", i);
+			n = snprintf(buf + off, bufsz - off, "%2d ", i);
 
-		if (n < 0 || n >= (int)sizeof(buf))
-			die("snprintf() buffer overflow");
+		if (n < 0 || (size_t)n >= bufsz - off)
+			return 1;
+		off += (size_t)n;
 
-		strapp(&ret, buf);
 		fday++;
 	}
 
-	return ret;
+	return 0;
 }
 
-static char*
-getsummary(const int m, const int y)
+/*
+ * Builds "<Month> <year>" padded so it centres over the 20-column body.
+ * The rendered string is always strlen(month) + 5 characters ("_YYYY"),
+ * so the leading pad is (CAL_WIDTH - (len + 5)) / 2 == (15 - len) / 2,
+ * which is what the %*s field width below produces.
+ * Returns 0 on success, 1 if the buffer was too small.
+ */
+static int
+getsummary(char *buf, const size_t bufsz, const int m, const int y)
 {
-	char buf[BUFFER_SIZE];
-	int  size = 0;
-	int  n    = 0;
+	size_t len  = strlen(months_string[m]);
+	int    size = 0;
+	int    n    = 0;
 
-	size = (15 + strlen(months_string[m])) / 2;
+	size = (len < 15) ? (int)((15 - len) / 2 + len) : (int)len;
 
-	n = snprintf(buf, sizeof(buf), "%*s %d", size, months_string[m], y);
+	n = snprintf(buf, bufsz, "%*s %d", size, months_string[m], y);
 
-	if (n < 0 || n >= (int)sizeof(buf))
-		die("snprintf() buffer overflow");
+	if (n < 0 || (size_t)n >= bufsz)
+		return 1;
 
-
-	return strdup(buf);
+	return 0;
 }
 
 static void
 printcalendar(void)
 {
-	struct tm *lt   = NULL;
-	char      *body = NULL;
-	char      *sum  = NULL;
-	time_t     ct   = 0;
+	struct tm *lt = NULL;
+	char       body[CAL_SIZE];
+	char       sum[BUFFER_SIZE];
+	time_t     ct = 0;
 
 	ct = time(NULL);
 	lt = localtime(&ct);
-
-	body = getcalendar(lt->tm_mday, lt->tm_wday, lt->tm_mon, lt->tm_year + 1900);
-	sum  = getsummary(lt->tm_mon, lt->tm_year + 1900);
-
-	if (!body || !sum) {
-		if (body)
-			free(body);
-		if (sum)
-			free(sum);
+	if (!lt) {
+		warn("localtime:");
 		return;
 	}
 
-	notify(sum, body, "calendar", NOTIFY_URGENCY_NORMAL, 0);
+	if (getcalendar(body, sizeof(body), lt->tm_mday, lt->tm_wday,
+	                lt->tm_mon, lt->tm_year + 1900) != 0 ||
+	    getsummary(sum, sizeof(sum), lt->tm_mon, lt->tm_year + 1900) != 0) {
+		warn("failed to render calendar");
+		return;
+	}
 
-	free(body);
-	free(sum);
+	notify(sum, body, "calendar");
 }
 
 static void
@@ -148,7 +175,7 @@ execbutton(void)
 		break;
 
 	case 3:
-		forkexecvp((char **) args_gui_calendar);
+		execute((char **)args_gui_calendar);
 		break;
 
 	default:
@@ -159,23 +186,25 @@ execbutton(void)
 int
 main(void)
 {
+	const enum Color def_cols[] = { clr_date };
+
 	struct tm *lt = NULL;
 	time_t     ct = 0;
 
 	set_name("dwmblocks-date");
-
-	const enum Color def_cols[] = {clr_date};
-	clr_init(def_cols, 1);
+	clr_init(def_cols, LEN(def_cols));
 
 	execbutton();
-	
+
 	ct = time(NULL);
 	lt = localtime(&ct);
+	if (!lt)
+		die("localtime:");
 
 	printf("%s", clr_get(clr_date));
-	if (show_icon) {
+
+	if (show_icon)
 		printf(" ");
-	}
 
 	printf("%02d/%02d" CLR_NRM "\n", lt->tm_mday, lt->tm_mon + 1);
 

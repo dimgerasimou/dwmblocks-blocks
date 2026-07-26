@@ -3,7 +3,8 @@
 #ifndef UTILS_H
 #define UTILS_H
 
-#include <libnotify/notification.h>
+#include <stddef.h>
+#include <sys/types.h>
 
 void set_name(const char *name);
 const char *get_name(void);
@@ -20,78 +21,48 @@ _Noreturn void die(const char *fmt, ...);
  */
 void warn(const char *fmt, ...);
 
+void *ecalloc(const size_t nmemb, const size_t size);
 void *emalloc(const size_t size);
+void *erealloc(void *ptr, const size_t size);
+
+/* Sends a single desktop notification with normal urgency. */
+void notify(const char *sum, const char *body, const char *icon);
 
 /*
- * Forks and executes given command.
+ * Writes the decimal representation of 'in' into 'out'.
+ * Dies if 'out' is too small to hold it.
  */
-void forkexecv(const char *path, char **args);
+void uitoa(const unsigned int in, char *out, const size_t outsz);
 
 /*
- * Forks and executes given command silently, redirecting
- * stdout and stderr to '/dev/null'.
+ * Forks and execs 'args' in a new session, searching PATH for args[0].
+ * The child never returns.
  */
-void forkexecvs(const char *path, char **args);
+void execute(char **args);
 
 /*
- * Forks and executes given command from bin directory.
+ * As execute(), but runs the exact binary at 'path'.
  */
- void forkexecvp(char **args);
+void executepath(const char *path, char **args);
 
 /*
- * Returns the absolute path of the concatenated path_array.
- * If is_file is true, then it doesn't add the last backslash.
- * Works with environment variables too, in the bas format.
+ * Joins a NULL-terminated array of path components into 'out'. A component
+ * beginning with '$' is replaced by the named environment variable; every
+ * other component is prefixed with '/'.
+ * Returns 0 on success, 1 if a variable was unset or 'out' was too small.
  */
-char* getpath(char **path_array);
+int getpath(const char *const *parts, char *out, const size_t outsz);
 
 /*
- * Returns the pid of the process that it's cmdline argument
- * matches the process string. Negative pids are the corresponding
- * error values. (If process exists more than one time, it fails)
- */
-pid_t getpidof(const char *process);
-
-/*
- * Returns the output of xmenu, after `menu` string is passed as the
- * argument. Negative values are the corresponding error values.
- * Parses only single integer xmenu outputs.
+ * Presents 'menu' via xmenu(1) and returns the selected option's value,
+ * or -1 if nothing was selected or xmenu could not be run.
  */
 int getxmenuopt(const char *menu);
 
 /*
- * Sends a single desktop notification.
+ * Returns the pid of the process whose /proc/<pid>/cmdline starts with
+ * 'process', or -1 if no such process exists.
  */
-void notify(const char *summary, const char *body, const char *icon, NotifyUrgency urgency, const int format_summary);
-
-/*
- * Sends a notification and returns the pointer for manipulation of the notification.
- */
-NotifyNotification* newnotify(const char *summary, const char *body, const char *icon, NotifyUrgency urgency, const int form_sum);
-
-/*
- * Updates a notification.
- */
-void updatenotify(NotifyNotification *notification, const char *summary, const char *body, const char *icon, NotifyUrgency urgency, const int timeout, const int form_sum);
-
-/*
- * Frees the objects related to the notification.
- */
-void freenotify(NotifyNotification *notification);
-
-/*
- * Works exactly as strcat but with the destination allocated in the heap.
- */
-char* strapp(char **dest, const char *src);
-
-/*
- * Trims the string up to the first '\n' character. Returns 1 if it removes any.
- */
-int trimtonewl(const char *string);
-
-/*
- * Converts an unsigned int to a string. Allocates the memory.
- */
-char* uitoa(const unsigned int num);
+pid_t getpidof(const char *process);
 
 #endif /* UTILS_H */

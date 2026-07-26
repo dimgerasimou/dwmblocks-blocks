@@ -1,5 +1,8 @@
 /* See LICENSE file for copyright and license details. */
 
+#define _POSIX_C_SOURCE 200809L
+
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -7,6 +10,7 @@
 #include <X11/extensions/XKBrules.h>
 
 #define KEYBOARD_C
+#define LEN(a) (sizeof(a) / sizeof((a)[0]))
 
 #include "colors.h"
 #include "utils.h"
@@ -76,14 +80,14 @@ execbutton(void)
 
 	switch (atoi(env)) {
 	case 1: {
-		char *path = getpath((char **)path_language_switch);
-		if (!path || !*path) {
+		char path[PATH_MAX];
+
+		if (getpath(path_language_switch, path, sizeof(path)) != 0) {
 			warn("getpath() failed for language switch");
-			free(path);
 			return;
 		}
-		forkexecv(path, (char **)args_language_switch);
-		free(path);
+
+		executepath(path, (char **)args_language_switch);
 		break;
 	}
 	default:
@@ -94,14 +98,16 @@ execbutton(void)
 int
 main(void)
 {
+	const enum Color def_cols[] = { clr_kbd };
+
 	Display *dpy = NULL;
 	XkbStateRec state;
 	XkbRF_VarDefsRec vd = {0};
 	char *layout = NULL;
 
 	set_name("dwmblocks-keyboard");
-	const enum Color def_cols[] = {clr_kbd};
-	clr_init(def_cols, 1);
+	clr_init(def_cols, LEN(def_cols));
+
 	execbutton();
 
 	dpy = XOpenDisplay(NULL);

@@ -1,5 +1,9 @@
 /* See LICENSE file for copyright and license details. */
 
+#define _POSIX_C_SOURCE 200809L
+
+#include <limits.h>
+
 #include <NetworkManager.h>
 #include <nm-dbus-interface.h>
 #include <stdio.h>
@@ -7,13 +11,14 @@
 #include <string.h>
 
 #define INTERNET_C
+#define LEN(a) (sizeof(a) / sizeof((a)[0]))
 
 #include "colors.h"
 #include "utils.h"
 #include "config.h"
 
-const char *notif_icons[]  = {"x", "tdenetworkmanager", "wifi-radar"};
-const char *status_icons[] = {
+static const char *const notif_icons[]  = {"x", "tdenetworkmanager", "wifi-radar"};
+static const char *const status_icons[] = {
 	"󰤮 ", /* 0: no primary connection / unknown */
 	" ", /* 1: ethernet */
 	"󰤯 ", /* 2: wifi 0 */
@@ -24,7 +29,7 @@ const char *status_icons[] = {
 	"󰤫 "  /* 7: error */
 };
 
-const int status_icons_clr[] = {
+static const enum Color status_icons_clr[] = {
 	clr_net_err,
 	clr_net_nrm,
 	clr_net_nrm,
@@ -35,7 +40,7 @@ const int status_icons_clr[] = {
 	clr_net_err
 };
 
-const char *menu_string    = "󱛄 Toggle Wifi\t0\n󱛃 Connect to wifi\t1\n󱚾 TUI options\t2";
+static const char *const menu_string = "󱛄 Toggle Wifi\t0\n󱛃 Connect to wifi\t1\n󱚾 TUI options\t2";
 
 /* function definitions */
 static void comapp(NMDevice *dev, GString *str);
@@ -50,7 +55,7 @@ static void wifiapp(NMDevice *dev, GString *str);
 static inline unsigned int
 clampstate(unsigned int s)
 {
-	const unsigned int n = (unsigned int)(sizeof(status_icons) / sizeof(status_icons[0]));
+	const unsigned int n = (unsigned int)LEN(status_icons);
 	if (s >= n)
 		return 0;
 	return s;
@@ -111,10 +116,7 @@ comapp(NMDevice *dev, GString *str)
 static void
 ethapp(NMDevice *dev, GString *str)
 {
-	NMActiveConnection *ac;
-
-	ac = nm_device_get_active_connection(dev);
-	if (!ac)
+	if (!nm_device_get_active_connection(dev))
 		g_string_append(str, "Ethernet: Disconnected\n\n");
 	else
 		g_string_append(str, "Ethernet\n");
@@ -139,16 +141,15 @@ execbutton(NMClient *c, int icind)
 			break;
 
 		case 1: {
-			char *path = getpath((char **)path_wifi_connect);
-			if (path) {
-				forkexecv(path, (char **)args_wifi_connect);
-				free(path);
-			}
+			char path[PATH_MAX];
+
+			if (getpath(path_wifi_connect, path, sizeof(path)) == 0)
+				executepath(path, (char **)args_wifi_connect);
 			break;
 		}
 
 		case 2:
-			forkexecvp((char **)args_tui_internet);
+			execute((char **)args_tui_internet);
 			break;
 
 		default:
@@ -234,17 +235,11 @@ printinfo(NMClient *c, const int ind)
 	icind = (unsigned int)(ind > 2 ? 2 : ind);
 
 	if (!devarr) {
-		notify("Network Devices Info", "No network devices detected", (char *)notif_icons[0],
-		       NOTIFY_URGENCY_NORMAL, 1);
+		notify("Network Devices Info", "No network devices detected", notif_icons[0]);
 		return;
 	}
 
 	str = g_string_new("");
-	if (!str) {
-		notify("Network Devices Info", "Out of memory", (char *)notif_icons[0],
-		       NOTIFY_URGENCY_NORMAL, 1);
-		return;
-	}
 
 	for (int i = 0; i < (int)devarr->len; i++) {
 		dev = g_ptr_array_index(devarr, i);
@@ -269,11 +264,9 @@ printinfo(NMClient *c, const int ind)
 	}
 
 	if (str->len <= 1)
-		notify("Network Devices Info", "No network devices detected", (char *)notif_icons[icind],
-		       NOTIFY_URGENCY_NORMAL, 1);
+		notify("Network Devices Info", "No network devices detected", notif_icons[icind]);
 	else
-		notify("Network Devices Info", str->str, (char *)notif_icons[icind],
-		       NOTIFY_URGENCY_NORMAL, 1);
+		notify("Network Devices Info", str->str, notif_icons[icind]);
 
 	g_string_free(str, TRUE);
 }
@@ -286,7 +279,7 @@ togglewifi(NMClient *client)
 	nm_client_wireless_set_enabled(client, !current);
 
 	const char *msg = current ? "WiFi Disabled" : "WiFi Enabled";
-	notify("WiFi Status", msg, notif_icons[2], NOTIFY_URGENCY_NORMAL, 1);
+	notify("WiFi Status", msg, notif_icons[2]);
 }
 
 static void
@@ -340,13 +333,13 @@ wifiapp(NMDevice *dev, GString *str)
 int
 main(void)
 {
+	const enum Color def_cols[] = { clr_net_err, clr_net_nrm };
+
 	unsigned int state = 0;
 	NMClient *client = NULL;
 
 	set_name("dwmblocks-internet");
-
-	const enum Color def_cols[] = {clr_net_err, clr_net_nrm};
-	clr_init(def_cols, 2);
+	clr_init(def_cols, LEN(def_cols));
 
 	nminit(&client);
 

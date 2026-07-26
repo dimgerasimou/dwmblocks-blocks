@@ -4,6 +4,7 @@
 #include <time.h>
 
 #define TIME_C
+#define LEN(a) (sizeof(a) / sizeof((a)[0]))
 
 #include "config.h"
 #include "utils.h"
@@ -12,15 +13,18 @@
 int
 main(void)
 {
+	const enum Color def_cols[] = { clr_tim };
+
 	struct tm *lt = NULL;
 	time_t     ct = 0;
 
 	set_name("dwmblocks-time");
-	const enum Color def_cols[] = {clr_tim};
-	clr_init(def_cols, 1);
-	
+	clr_init(def_cols, LEN(def_cols));
+
 	ct = time(NULL);
 	lt = localtime(&ct);
+	if (!lt)
+		die("localtime:");
 
 	printf("%s", clr_get(clr_tim));
 

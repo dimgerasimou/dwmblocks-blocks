@@ -1,33 +1,39 @@
-#include <string.h>
+/* See LICENSE file for copyright and license details. */
+
 #include <stdio.h>
+#include <string.h>
 
 #include "colors.h"
 #include "utils.h"
 
 #ifdef NO_COLOR
 
-char *
-clr_get(enum Color clr)
-{
-	char *ret = ecalloc(1);
-	ret[0] = '\0';
-	return ret;
-}
-
 void
 clr_init(const enum Color clrs[], size_t clrs_num)
 {
-	return;
+	(void)clrs;
+	(void)clrs_num;
 }
 
-#else
+const char *
+clr_get(enum Color clr)
+{
+	(void)clr;
+	return "";
+}
+
+#else /* NO_COLOR */
 
 #include <X11/Xlib.h>
 #include <X11/Xresource.h>
 
-static char colors[CLR_SIZE][8] = {0};
+/* Rendered escape: "^c" + "#RRGGBB" + "^" + NUL. */
+#define CLR_LEN  11
+#define HEX_LEN  7
 
-static const char *names[CLR_SIZE] ={
+static char colors[CLR_SIZE][CLR_LEN] = {0};
+
+static const char *const names[CLR_SIZE] = {
 	"clr_bat_crt",
 	"clr_bat_low",
 	"clr_bat_nrm",
@@ -47,7 +53,7 @@ static const char *names[CLR_SIZE] ={
 };
 
 static int
-isxdigit(char c)
+ishexdigit(char c)
 {
 	if (c >= 'a' && c <= 'f')
 		return 1;
@@ -58,76 +64,59 @@ isxdigit(char c)
 	return 0;
 }
 
+/* Accepts exactly "#RRGGBB". */
 static int
-hexverify(char *hex)
+hexverify(const char *hex)
 {
-	if (strlen(hex) != 7)
+	if (!hex || strlen(hex) != HEX_LEN)
 		return 0;
 
 	if (hex[0] != '#')
 		return 0;
 
-	for (size_t i = 1; i < 7; i++) {
-		if (!isxdigit(hex[i]))
+	for (size_t i = 1; i < HEX_LEN; i++) {
+		if (!ishexdigit(hex[i]))
 			return 0;
 	}
 
 	return 1;
 }
 
+/*
+ * Looks 'clr' up in 'db' under "dwmblocks.<name>" then "*<name>", storing
+ * the rendered escape on the first valid hit. Returns 1 if one was found.
+ */
 static int
 clr_load(XrmDatabase db, enum Color clr)
 {
+	static const char *const prefixes[] = { "dwmblocks.", "*" };
+
 	XrmValue ret;
-	char *type;
-	char name[256];
+	char    *type = NULL;
+	char     name[256];
 
-	snprintf(name, sizeof(name), "dwmblocks.%s", names[clr]);
-	name[sizeof(name) - 1] = '\0';
-	if (XrmGetResource(db, name, "*", &type, &ret) && ret.addr) {
-		if (hexverify(ret.addr)) {
-			strncpy(colors[clr], ret.addr, 7);
-			colors[clr][7] = '\0';
-			return 1;
-		}
-	}
+	for (size_t i = 0; i < sizeof(prefixes) / sizeof(prefixes[0]); i++) {
+		snprintf(name, sizeof(name), "%s%s", prefixes[i], names[clr]);
 
-	snprintf(name, sizeof(name), "*%s", names[clr]);
-	name[sizeof(name) - 1] = '\0';
-	if (XrmGetResource(db, name, "*", &type, &ret) && ret.addr) {
-		if (hexverify(ret.addr)) {
-			strncpy(colors[clr], ret.addr, 7);
-			colors[clr][7] = '\0';
-			return 1;
-		}
+		if (!XrmGetResource(db, name, "*", &type, &ret) || !ret.addr)
+			continue;
+
+		if (!hexverify(ret.addr))
+			continue;
+
+		snprintf(colors[clr], sizeof(colors[clr]), "^c%s^", ret.addr);
+		return 1;
 	}
 
 	return 0;
 }
 
-char *
-clr_get(enum Color clr)
-{
-	char *ret;
-
-	if (!colors[clr]) {
-		ret = emalloc(1);
-		ret = malloc(1);
-		ret[0] = '\0';
-		return ret;
-	}
-
-	ret = emalloc(11);
-	snprintf(ret, 11, "^c%s^", colors[clr]);
-	return ret;
-}
-
 void
 clr_init(const enum Color clrs[], size_t clrs_num)
 {
-	Display *dpy;
-	char *resm;
-	XrmDatabase db;
+	Display     *dpy;
+	XrmDatabase  db;
+	char        *resm;
 
 	if (!(dpy = XOpenDisplay(NULL)))
 		die("XOpenDisplay:");
@@ -135,13 +124,27 @@ clr_init(const enum Color clrs[], size_t clrs_num)
 	XrmInitialize();
 
 	resm = XResourceManagerString(dpy);
-	db = resm ? XrmGetStringDatabase(resm) : NULL;
+	db   = resm ? XrmGetStringDatabase(resm) : NULL;
 
-	for (size_t i = 0; i < clrs_num; i++) {
-		clr_load(db, clrs[i]);
+	if (db) {
+		for (size_t i = 0; i < clrs_num; i++) {
+			if ((unsigned int)clrs[i] < (unsigned int)CLR_SIZE)
+				clr_load(db, clrs[i]);
+		}
+
+		XrmDestroyDatabase(db);
 	}
 
 	XCloseDisplay(dpy);
 }
 
-#endif
+const char *
+clr_get(enum Color clr)
+{
+	if ((unsigned int)clr >= (unsigned int)CLR_SIZE)
+		return "";
+
+	return colors[clr];
+}
+
+#endif /* NO_COLOR */

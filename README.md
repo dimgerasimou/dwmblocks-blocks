@@ -2,48 +2,131 @@
 
 This repository contains blocks, executables that display a single part of a status line. These can be used by a status line application, e.g. [dwmblocks](https://github.com/dimgerasimou/dwmasyncblocks).
 
-If the window manager and status application are configured correctly, the blocks support colour and are clickable. For dwm, it needs to be patched with [statuscmd](https://dwm.suckless.org/patches/statuscmd/) and [status2d](https://dwm.suckless.org/patches/status2d/)
+If the window manager and status application are configured correctly, the blocks support colour and are clickable. For dwm, it needs to be patched with [statuscmd](https://dwm.suckless.org/patches/statuscmd/) and [status2d](https://dwm.suckless.org/patches/status2d/).
 
-They are written using C, mostly using system libraries.
+They are written in C, mostly using system libraries.
 
-A nerd font must definetly be used in the window manager to render the icons properly, as well as Font Awesome.
+A nerd font must definitely be used in the window manager to render the icons properly, as well as Font Awesome.
 
-## License
+## Build / install
 
-This project is licensed under the GNU General Public License v3.0. See the [LICENSE](./LICENSE) file for details.
+Configuration lives in `config.h`, which is created from `config.def.h` on the first build. Edit it to match your setup, then run:
 
-## Colorscheme
+```bash
+make
+make install
+```
 
-A file colorscheme.h must be defined to be able to compile. There are some preset colorschemes given.
+Blocks are installed to `$(BLOCKDIR)`, which defaults to `~/.local/bin/dwmblocks`. Point your dwmblocks configuration at that directory.
 
-If no colorscheme.h file is present at compile time, it will attempt to create one, with colors from the defined terminal colors in XResources.
+Useful variables:
+
+| Variable   | Default                  | Purpose                                    |
+|------------|--------------------------|--------------------------------------------|
+| `PREFIX`   | `$(HOME)/.local`         | Installation prefix                        |
+| `BINDIR`   | `$(PREFIX)/bin`          | Binary directory                           |
+| `BLOCKDIR` | `$(BINDIR)/dwmblocks`    | Where the blocks themselves are installed  |
+| `DESTDIR`  | *(empty)*                | Staging root, for packaging                |
+| `CC`       | `cc`                     | Compiler                                   |
+| `CFLAGS`   | `-Os`                    | Optimisation and extra flags               |
+| `BLOCKS`   | all blocks               | Which blocks to build and install          |
+| `COLOR`    | `1`                      | Set to `0` for uncoloured build output     |
+
+The warning flags are held in a separate `WARNINGS` variable, so overriding `CFLAGS` does not switch them off.
+
+Other targets:
+
+```bash
+make time          # build a single block
+make debug         # rebuild everything with ASan/UBSan and -fanalyzer
+make test          # build and run the test suite under sanitizers
+make clean
+make uninstall
+```
+
+Each block links only against the libraries it actually uses, so a missing `libnm` or `libpulse` only prevents that one block from building. To skip blocks entirely, edit the `BLOCKS` list in the `Makefile` or override it:
+
+```bash
+make BLOCKS="time date battery"
+```
+
+### Dependencies
+
+Required for all blocks:
+
+- C compiler (gcc/clang) and make
+- `pkg-config`
+- `libnotify`
+- `libX11`
+
+Per block, additionally: `libxkbfile` (keyboard), `dbus-1` (bluetooth), `libnm` and `glib-2.0` (internet), `libpulse` (volume). Runtime dependencies are listed per block below.
+
+## Colours
+
+Colours are read at runtime from the X resource database, so changing a colour does not require a rebuild. There is no `colorscheme.h`; that file was removed and is no longer needed.
+
+Each colour is looked up first as `dwmblocks.<name>`, then as `*<name>`. Values must be exactly `#RRGGBB`. Anything missing or malformed is skipped, and the block renders in the status bar's default colour.
+
+Example `~/.Xresources`:
+
+```
+dwmblocks.clr_bat_crt:  #F38BA8
+dwmblocks.clr_bat_low:  #FAB387
+dwmblocks.clr_bat_nrm:  #A6E3A1
+dwmblocks.clr_bat_chg:  #A6E3A1
+dwmblocks.clr_bt:       #89B4FA
+dwmblocks.clr_date:     #CBA6F7
+dwmblocks.clr_net_nrm:  #94E2D5
+dwmblocks.clr_net_err:  #F38BA8
+dwmblocks.clr_krn_pkg:  #F9E2AF
+dwmblocks.clr_krn_nrm:  #89DCEB
+dwmblocks.clr_kbd:      #B4BEFE
+dwmblocks.clr_mem:      #F5C2E7
+dwmblocks.clr_pwr:      #F38BA8
+dwmblocks.clr_tim:      #FAB387
+dwmblocks.clr_vol_nrm:  #A6E3A1
+dwmblocks.clr_vol_mut:  #6C7086
+```
+
+Apply with `xrdb -merge ~/.Xresources`.
+
+Building with `-DNO_COLOR` compiles the colour lookup out entirely; every block then emits plain, uncoloured text and no longer needs an X connection for colours.
+
+The calendar drawn by the date block uses Pango markup rather than the status bar's colour escapes, so its accent colour is a compile-time setting. Override it by defining `CAL_ACCENT` in `config.h`:
+
+```c
+#define CAL_ACCENT "#F38BA8"
+```
 
 ## Blocks
 
-Here is a list of the blocks, with a summary of their functions and dependencies:
+Here is a list of the blocks, with a summary of their functions and dependencies.
 
 ### battery
 
 #### Usage
 
-Reports the battery level, status and optionally the power manager's status. Reads the battery info from `/sys/class/power_supply/BAT@`. 
+Reports the battery level, status and optionally the power manager's status. The battery is located automatically by scanning `/sys/class/power_supply` for the first device whose `type` is `Battery`, so no path needs configuring.
 
-Check if the correct path is set in the `config.h` file.
+Left click notifies the current capacity and status.
 
 #### Dependencies
 
 Optional:
- - optimus-manager
+- optimus-manager (enable with `POWER_MANAGEMENT` in `config.h`)
 
 ### bluetooth
 
 #### Usage
 
-Returns the blueooth state, can toggle the bluetooth state and optionally open a TUI interface with the bluetooth settings.
+Returns the bluetooth state, can toggle the bluetooth state and optionally open a TUI interface with the bluetooth settings.
+
+Left click opens the TUI; middle click toggles the adapter. Only `hci0` and `hci1` are checked.
 
 #### Dependencies
 
 - bluez
+- dbus
 
 Optional:
 - A bluetooth TUI manager (by default bluetuith running on st)
@@ -52,8 +135,9 @@ Optional:
 
 #### Usage
 
-Returns current day, notify a cute monthly calendar and optionaly launch a calendar through
-a browser.
+Returns the current day, notifies a cute monthly calendar and optionally launches a calendar through a browser.
+
+Left click shows the calendar; right click opens the browser.
 
 #### Dependencies
 
@@ -64,11 +148,15 @@ Optional:
 
 #### Usage
 
-Returns the state, notify the properties of the ethernet and wifi adapters. Can toggle wifi state, optionally spawn a utility to connect to wifi and open a TUI utility.
+Returns the state, notifies the properties of the ethernet and wifi adapters. Can toggle wifi state, optionally spawn a utility to connect to wifi and open a TUI utility.
+
+Left click notifies device info; right click opens an xmenu with the wifi actions.
 
 #### Dependencies
 
 - libnm
+- glib-2.0
+- xmenu (for the right click menu)
 
 Optional:
 - A TUI interface (default: nmtui through network-manager package running on st)
@@ -78,7 +166,9 @@ Optional:
 
 #### Usage
 
-Returns current kernel version and the number of packages to be updated, notifies the number of aur packages or pacman packages to be upgraded and can perform a system upgrade.
+Returns the current kernel version and the number of packages to be updated, notifies the number of AUR or pacman packages to be upgraded, and can perform a system upgrade.
+
+Left click notifies the update counts; right click runs the upgrade command.
 
 #### Dependencies
 
@@ -97,28 +187,27 @@ Returns the current keyboard layout and optionally switches language on click.
 #### Dependencies
 
 - libx11
-- libxkbcommon
+- libxkbfile
 
 Optional:
-- A keyboard layout switcher (default: [keyboard.sh](https://github.com/dimgerasimou/binaries))
+- A keyboard layout switcher (default: [dwm-xkbnext](https://github.com/dimgerasimou/binaries))
 
 ### memory
 
 #### Usage
 
-Returns the memory that is currently used and optionally runs a task manager.
+Returns the memory that is currently used, computed as `MemTotal - MemAvailable` from `/proc/meminfo`, and optionally runs a task manager.
 
 #### Dependencies
 
-Optionally:
+Optional:
 - A task manager (default: htop running on st)
 
 ### power
 
 #### Usage
 
-Prints a power menu that can: shutdown, restart, lock, restart the statusbar and optionally
-pause the clipboard, delete the clipboard contents and switch the power mode from optimus manager.
+Prints a power menu that can: shutdown, restart, lock, restart the statusbar and optionally pause the clipboard, delete the clipboard contents and switch the power mode from optimus manager.
 
 #### Dependencies
 
@@ -127,8 +216,8 @@ pause the clipboard, delete the clipboard contents and switch the power mode fro
 - A lock screen utility (default: [slock](https://github.com/dimgerasimou/slock))
 
 Optional:
-- clipmenu
-- optimus-manager
+- clipmenu (enable with `CLIPBOARD` in `config.h`)
+- optimus-manager (enable with `POWER_MANAGEMENT` in `config.h`)
 
 ### time
 
@@ -138,18 +227,33 @@ Returns the current time in 24h format.
 
 #### Dependencies
 
-No dependecies.
+No dependencies.
 
 ### volume
 
 #### Usage
 
-Returns current volume and state, notifies it along the default source's and sink's info. Can optionally launch a equalizer application and can change the volume or mute the volume.
+Returns the current volume and state, notifies it along with the default source's and sink's info. Can optionally launch an equalizer application and can change or mute the volume.
 
 #### Dependencies
 
 - libpulse
 
 Optional:
-- A utility to control volume (default: [audiocontrol](https://github.com/dimgerasimou/binaries))
+- A utility to control volume (default: [dwm-audio](https://github.com/dimgerasimou/binaries))
 - An equalizer application (default: easyeffects)
+
+## Development
+
+The build uses a strict warning set (`-Wconversion`, `-Wsign-conversion`, `-Wshadow`, `-Wformat=2`, and friends) and the tree builds warning-free. Please keep it that way.
+
+```bash
+make test    # unit tests, run under AddressSanitizer and UBSan
+make debug   # full rebuild with sanitizers and, on GCC, -fanalyzer
+```
+
+Tests live in `src/tests/`. `make test` builds and runs each one; a non-zero exit fails the build.
+
+## License
+
+This project is licensed under the GNU General Public License v3.0. See the [LICENSE](./LICENSE) file for details.

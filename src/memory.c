@@ -1,12 +1,14 @@
 /* See LICENSE file for copyright and license details. */
 
+#define _POSIX_C_SOURCE 200809L
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 
 #define MEMORY_C
 #define BUF_SIZE 256
+#define LEN(a)   (sizeof(a) / sizeof((a)[0]))
 
 #include "colors.h"
 #include "utils.h"
@@ -60,7 +62,7 @@ execbutton(void)
 
 	switch (atoi(env)) {
 	case 3:
-		forkexecvp((char **)args_task_manager);
+		execute((char **)args_task_manager);
 		break;
 	default:
 		break;
@@ -70,11 +72,12 @@ execbutton(void)
 int
 main(void)
 {
+	const enum Color def_cols[] = { clr_mem };
+
 	long used_kib;
 
 	set_name("dwmblocks-memory");
-	const enum Color def_cols[] = {clr_mem};
-	clr_init(def_cols, 1);
+	clr_init(def_cols, LEN(def_cols));
 
 	execbutton();
 

@@ -2,7 +2,6 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <dbus/dbus.h>
 
 #define BLUETOOTH_C
@@ -11,10 +10,10 @@
 #include "utils.h"
 #include "config.h"
 
-/* two states: off, on */
 static const char *icons_bt[] = { "󰂲", "󰂯" };
+#define DBUS_TIMEOUT_MS 1000
+#define LEN(a)          (sizeof(a) / sizeof((a)[0]))
 
-/* minimal robustness: try hci0 then hci1 */
 static const char *adapter_paths[] = { "/org/bluez/hci0", "/org/bluez/hci1", NULL };
 
 static int
@@ -27,8 +26,7 @@ getbtadapterstate(DBusConnection *conn, DBusError *err, const char *objpath)
 	const char  *prop    = "Powered";
 	dbus_bool_t  powered = FALSE;
 
-	msg = dbus_message_new_method_call("org.bluez", objpath,
-	                                   "org.freedesktop.DBus.Properties", "Get");
+	msg = dbus_message_new_method_call("org.bluez", objpath, "org.freedesktop.DBus.Properties", "Get");
 	if (!msg) {
 		warn("Failed to create DBus message");
 		return -1;
@@ -38,7 +36,7 @@ getbtadapterstate(DBusConnection *conn, DBusError *err, const char *objpath)
 	dbus_message_iter_append_basic(&args, DBUS_TYPE_STRING, &iface);
 	dbus_message_iter_append_basic(&args, DBUS_TYPE_STRING, &prop);
 
-	reply = dbus_connection_send_with_reply_and_block(conn, msg, -1, err);
+	reply = dbus_connection_send_with_reply_and_block(conn, msg, DBUS_TIMEOUT_MS, err);
 	dbus_message_unref(msg);
 
 	if (dbus_error_is_set(err)) {
@@ -50,14 +48,50 @@ getbtadapterstate(DBusConnection *conn, DBusError *err, const char *objpath)
 	if (!reply)
 		return -1;
 
-	if (dbus_message_iter_init(reply, &replyArgs)) {
+	if (dbus_message_iter_init(reply, &replyArgs) &&
+	    dbus_message_iter_get_arg_type(&replyArgs) == DBUS_TYPE_VARIANT) {
 		DBusMessageIter variant;
+
 		dbus_message_iter_recurse(&replyArgs, &variant);
-		dbus_message_iter_get_basic(&variant, &powered);
+
+		/*
+		 * get_basic() writes sizeof(contained type) bytes through the
+		 * pointer, so the type must be confirmed before the call.
+		 */
+		if (dbus_message_iter_get_arg_type(&variant) == DBUS_TYPE_BOOLEAN)
+			dbus_message_iter_get_basic(&variant, &powered);
+		else
+			warn("Unexpected type for Powered property");
 	}
 
 	dbus_message_unref(reply);
 	return powered ? 1 : 0;
+}
+
+/*
+ * Walks the known adapter paths and returns the powered state of the first
+ * one that answers. If 'out' is non-NULL it receives that adapter's path.
+ * Returns -1 if no adapter responded.
+ */
+static int
+findadapter(DBusConnection *conn, const char **out)
+{
+	for (int i = 0; adapter_paths[i]; i++) {
+		DBusError err;
+		int       state;
+
+		dbus_error_init(&err);
+		state = getbtadapterstate(conn, &err, adapter_paths[i]);
+		dbus_error_free(&err);
+
+		if (state >= 0) {
+			if (out)
+				*out = adapter_paths[i];
+			return state;
+		}
+	}
+
+	return -1;
 }
 
 static int
@@ -71,17 +105,13 @@ getbtstate(void)
 
 	conn = dbus_bus_get(DBUS_BUS_SYSTEM, &err);
 	if (!conn || dbus_error_is_set(&err)) {
-		warn("Failed to connect to the DBus system bus: %s", err.message);
+		warn("Failed to connect to the DBus system bus: %s",
+		     dbus_error_is_set(&err) ? err.message : "unknown error");
 		dbus_error_free(&err);
 		return -1;
 	}
 
-	for (int i = 0; adapter_paths[i]; i++) {
-		dbus_error_init(&err);
-		state = getbtadapterstate(conn, &err, adapter_paths[i]);
-		if (state >= 0)
-			break;
-	}
+	state = findadapter(conn, NULL);
 
 	dbus_connection_unref(conn);
 	return state;
@@ -96,8 +126,7 @@ setbtpowered(DBusConnection *conn, DBusError *err, const char *objpath, dbus_boo
 	const char *iface = "org.bluez.Adapter1";
 	const char *prop  = "Powered";
 
-	msg = dbus_message_new_method_call("org.bluez", objpath,
-	                                   "org.freedesktop.DBus.Properties", "Set");
+	msg = dbus_message_new_method_call("org.bluez", objpath, "org.freedesktop.DBus.Properties", "Set");
 	if (!msg) {
 		warn("Failed to create DBus message");
 		return -1;
@@ -111,7 +140,7 @@ setbtpowered(DBusConnection *conn, DBusError *err, const char *objpath, dbus_boo
 	dbus_message_iter_append_basic(&valueIter, DBUS_TYPE_BOOLEAN, &powered);
 	dbus_message_iter_close_container(&args, &valueIter);
 
-	reply = dbus_connection_send_with_reply_and_block(conn, msg, -1, err);
+	reply = dbus_connection_send_with_reply_and_block(conn, msg, DBUS_TIMEOUT_MS, err);
 	dbus_message_unref(msg);
 
 	if (dbus_error_is_set(err)) {
@@ -139,31 +168,22 @@ togglebt(void)
 
 	conn = dbus_bus_get(DBUS_BUS_SYSTEM, &err);
 	if (!conn || dbus_error_is_set(&err)) {
-		warn("Failed to connect to the DBus system bus: %s", err.message);
+		warn("Failed to connect to the DBus system bus: %s",
+		     dbus_error_is_set(&err) ? err.message : "unknown error");
 		dbus_error_free(&err);
 		return;
 	}
 
-	/* find an adapter we can talk to */
-	for (int i = 0; adapter_paths[i]; i++) {
-		dbus_error_init(&err);
-		state = getbtadapterstate(conn, &err, adapter_paths[i]);
-		if (state >= 0) {
-			objpath = adapter_paths[i];
-			break;
-		}
-	}
+	state = findadapter(conn, &objpath);
 
-	if (!objpath) {
+	if (state < 0 || !objpath) {
 		warn("No Bluetooth adapter found (hci0/hci1)");
 		dbus_connection_unref(conn);
 		return;
 	}
 
-	/* toggle */
 	dbus_error_init(&err);
 	if (setbtpowered(conn, &err, objpath, state ? FALSE : TRUE) < 0) {
-		/* error already logged */
 		dbus_connection_unref(conn);
 		return;
 	}
@@ -180,7 +200,7 @@ execbutton(void)
 
 	switch (atoi(env)) {
 	case 1:
-		forkexecvp((char**)bt_tui_cmd);
+		execute((char**)bt_tui_cmd);
 		break;
 
 	case 2:
@@ -195,19 +215,20 @@ execbutton(void)
 int
 main(void)
 {
+	const enum Color def_cols[] = { clr_bt };
+
 	int state;
 
 	set_name("dwmblocks-bluetooth");
-	const enum Color def_cols[] = {clr_bt};
-	clr_init(def_cols, 1);
+	clr_init(def_cols, LEN(def_cols));
+
 	execbutton();
 
 	state = getbtstate();
-	if (state < 0) {
-		/* don’t make the whole block fail; just show “off” */
+	if (state < 0)
 		state = 0;
-	}
 
 	printf("%s%s" CLR_NRM "\n", clr_get(clr_bt), icons_bt[state ? 1 : 0]);
-	return EXIT_SUCCESS;
+
+	return 0;
 }

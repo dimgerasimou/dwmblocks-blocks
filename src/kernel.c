@@ -1,13 +1,16 @@
 /* See LICENSE file for copyright and license details. */
 
+#define _POSIX_C_SOURCE 200809L
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/utsname.h>
-#include <unistd.h>
 
 #define KERNEL_C
-#define BUF_SIZE 64
+#define BUF_SIZE  64
+#define BODY_SIZE 128
+#define LEN(a)    (sizeof(a) / sizeof((a)[0]))
 
 #include "colors.h"
 #include "utils.h"
@@ -48,36 +51,26 @@ execbutton(int *aur, int *pm)
 
 	switch (atoi(env)) {
 	case 1: {
-		char *body = NULL;
-		NotifyNotification *n = NULL;
-		char numbuf[32];
-
-		n = newnotify("Packages", "Getting packages upgrade info..", "tux",
-		              NOTIFY_URGENCY_NORMAL, 1);
+		char body[BODY_SIZE];
+		int  n;
 
 		*aur = (int)getupdates(cmd_aur_updates);
 		*pm  = (int)getupdates(cmd_pm_updates);
 
-		strapp(&body, "󰏖 Pacman Updates: ");
-		snprintf(numbuf, sizeof(numbuf), "%d", *pm);
-		strapp(&body, numbuf);
+		n = snprintf(body, sizeof(body),
+		             "󰏖 Pacman Updates: %d\n"
+		             " AUR Updates: %d",
+		             *pm, *aur);
 
-		strapp(&body, "\n AUR Updates: ");
-		snprintf(numbuf, sizeof(numbuf), "%d", *aur);
-		strapp(&body, numbuf);
+		if (n < 0 || (size_t)n >= sizeof(body))
+			warn("notification body truncated");
 
-		if (n)
-			updatenotify(n, "Packages", body ? body : "No data", "tux",
-			             NOTIFY_URGENCY_NORMAL, 0, 1);
-
-		free(body);
-		if (n)
-			freenotify(n);
+		notify("Packages", body, "tux");
 		break;
 	}
 
 	case 3:
-		forkexecvp((char **)args_update_cmd);
+		execute((char **)args_update_cmd);
 		break;
 
 	default:
@@ -88,14 +81,15 @@ execbutton(int *aur, int *pm)
 int
 main(void)
 {
-	char *release = NULL;
-	int aur = -1;
-	int pm  = -1;
+	const enum Color def_cols[] = { clr_krn_pkg, clr_krn_nrm };
+
+	struct utsname un;
+	char          *release = NULL;
+	int            aur = -1;
+	int            pm  = -1;
 
 	set_name("dwmblocks-kernel");
-
-	const enum Color def_cols[] = {clr_krn_pkg, clr_krn_nrm};
-	clr_init(def_cols, 2);
+	clr_init(def_cols, LEN(def_cols));
 
 	execbutton(&aur, &pm);
 
@@ -105,18 +99,16 @@ main(void)
 		pm = (int)getupdates(cmd_pm_updates);
 
 	if (show_release) {
-		struct utsname buf;
-
-		if (uname(&buf) != 0) {
-			warn("uname():");;
+		if (uname(&un) != 0) {
+			warn("uname():");
 		} else {
-			/* duplicate and strip suffix like "-arch1-1" */
-			release = strdup(buf.release);
-			if (release) {
-				char *dash = strchr(release, '-');
-				if (dash)
-					*dash = '\0';
-			}
+			char *dash;
+
+			/* strip a suffix like "-arch1-1" in place */
+			release = un.release;
+			dash = strchr(release, '-');
+			if (dash)
+				*dash = '\0';
 		}
 	}
 
@@ -133,6 +125,5 @@ main(void)
 
 	printf(CLR_NRM "\n");
 
-	free(release);
 	return 0;
 }
