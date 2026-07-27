@@ -23,10 +23,15 @@ const char *cal_monthname(const int m);
 /*
  * Renders the month as Pango markup into 'buf', one week per line,
  * Monday first, with 'mday' highlighted.
+ *
+ * 'accent' is a "#RRGGBB" string used for weekends and the current day;
+ * pass NULL or "" to render without colour, in which case the current day
+ * is marked in bold instead.
+ *
  * Returns 0 on success, 1 if the buffer was too small.
  */
-int cal_render(char *buf, const size_t bufsz, const int mday, const int wday,
-               const int m, const int y);
+int cal_render(char *buf, const size_t bufsz, const char *accent,
+               const int mday, const int wday, const int m, const int y);
 
 /*
  * Builds "<Month> <year>", padded so it centres over a CAL_WIDTH body.

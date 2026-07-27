@@ -9,6 +9,10 @@
 #include "colors.h"
 #include "utils.h"
 
+#define LEN(a) (sizeof(a) / sizeof((a)[0]))
+
+_Static_assert(LEN(clr_defaults) == CLR_SIZE, "clr_defaults in config.h must have one entry per enum Color");
+
 #ifdef NO_COLOR
 
 void
@@ -23,6 +27,13 @@ clr_get(enum Color clr)
 	return "";
 }
 
+const char *
+clr_hex(enum Color clr)
+{
+	(void)clr;
+	return "";
+}
+
 #else /* NO_COLOR */
 
 #include <limits.h>
@@ -32,10 +43,10 @@ clr_get(enum Color clr)
 #include <X11/Xlib.h>
 #include <X11/Xresource.h>
 
-/* Rendered escape: "^c" + "#RRGGBB" + "^" + NUL. */
-#define CLR_LEN   11
 #define CACHE_NAME "dwmblocks-colors"
 
+/* Resolved "#RRGGBB" values, and the escapes rendered from them. */
+static char hexes[CLR_SIZE][CLR_HEX_LEN] = {0};
 static char colors[CLR_SIZE][CLR_LEN] = {0};
 
 static const char *const names[CLR_SIZE] = {
@@ -54,8 +65,43 @@ static const char *const names[CLR_SIZE] = {
 	"clr_pwr",
 	"clr_tim",
 	"clr_vol_nrm",
-	"clr_vol_mut"
+	"clr_vol_mut",
+	"clr_cal"
 };
+
+/* Stores 'hex' for 'clr' if it is a valid "#RRGGBB" string. */
+static void
+sethex(enum Color clr, const char *hex)
+{
+	if (!ishexcolor(hex)) {
+		hexes[clr][0] = '\0';
+		return;
+	}
+
+	memcpy(hexes[clr], hex, CLR_HEX_LEN - 1);
+	hexes[clr][CLR_HEX_LEN - 1] = '\0';
+}
+
+/* Renders every resolved colour through CLR_FMT. */
+static void
+render(void)
+{
+	for (size_t i = 0; i < CLR_SIZE; i++) {
+		int n;
+
+		if (!hexes[i][0]) {
+			colors[i][0] = '\0';
+			continue;
+		}
+
+		n = snprintf(colors[i], sizeof(colors[i]), CLR_FMT, hexes[i]);
+
+		if (n < 0 || (size_t)n >= sizeof(colors[i])) {
+			warn("CLR_FMT produces too long an escape for %s", names[i]);
+			colors[i][0] = '\0';
+		}
+	}
+}
 
 /*
  * Builds the cache path in $XDG_RUNTIME_DIR, falling back to /tmp keyed by
@@ -77,19 +123,23 @@ cachepath(char *out, const size_t outsz)
 }
 
 /*
- * The cache is stale if ~/.Xresources exists and is newer than it, which
- * covers the usual "edit the file, run xrdb" workflow. $XDG_RUNTIME_DIR is
+ * The cache is stale if ~/.Xresources is newer than it, which covers the
+ * usual "edit the file, run xrdb" workflow, or if this executable is newer,
+ * which covers a rebuild after editing clr_defaults. $XDG_RUNTIME_DIR is
  * cleared at logout, so a fresh session always rebuilds.
  */
 static int
 cachestale(const char *cache)
 {
-	struct stat cst, xst;
+	struct stat cst, other;
 	const char *home;
 	char        xres[PATH_MAX];
 	int         n;
 
 	if (stat(cache, &cst) != 0)
+		return 1;
+
+	if (stat("/proc/self/exe", &other) == 0 && other.st_mtime > cst.st_mtime)
 		return 1;
 
 	home = getenv("HOME");
@@ -100,22 +150,21 @@ cachestale(const char *cache)
 	if (n < 0 || (size_t)n >= sizeof(xres))
 		return 0;
 
-	if (stat(xres, &xst) != 0)
+	if (stat(xres, &other) != 0)
 		return 0;
 
-	return xst.st_mtime > cst.st_mtime;
+	return other.st_mtime > cst.st_mtime;
 }
 
 /*
- * Reads one escape per colour, in enum order. Every line must be either
- * empty or exactly "^c#RRGGBB^"; anything else means the cache is corrupt
- * and the whole thing is rejected, so a bad file can never reach the bar.
- * Returns 0 on success.
+ * Reads one "#RRGGBB" per colour, in enum order; an empty line means the
+ * colour is unset. Any other content means the cache is corrupt and the
+ * whole file is rejected. Returns 0 on success.
  */
 static int
 cacheload(const char *path)
 {
-	char  line[CLR_LEN + 2];
+	char  line[CLR_HEX_LEN + 2];
 	FILE *fp;
 
 	fp = fopen(path, "r");
@@ -123,32 +172,20 @@ cacheload(const char *path)
 		return 1;
 
 	for (size_t i = 0; i < CLR_SIZE; i++) {
-		char   hex[8];
-		size_t len;
-
 		if (!fgets(line, sizeof(line), fp))
 			goto corrupt;
 
 		line[strcspn(line, "\n")] = '\0';
-		len = strlen(line);
 
-		/* An unset colour is stored as an empty line. */
-		if (len == 0) {
-			colors[i][0] = '\0';
+		if (line[0] == '\0') {
+			hexes[i][0] = '\0';
 			continue;
 		}
 
-		if (len != CLR_LEN - 1 || line[0] != '^' || line[1] != 'c' ||
-		    line[len - 1] != '^')
+		if (!ishexcolor(line))
 			goto corrupt;
 
-		memcpy(hex, line + 2, sizeof(hex) - 1);
-		hex[sizeof(hex) - 1] = '\0';
-
-		if (!ishexcolor(hex))
-			goto corrupt;
-
-		memcpy(colors[i], line, len + 1);
+		memcpy(hexes[i], line, CLR_HEX_LEN);
 	}
 
 	fclose(fp);
@@ -156,7 +193,7 @@ cacheload(const char *path)
 
 corrupt:
 	fclose(fp);
-	memset(colors, 0, sizeof(colors));
+	memset(hexes, 0, sizeof(hexes));
 	return 1;
 }
 
@@ -184,15 +221,15 @@ cachestore(const char *path)
 	}
 
 	for (size_t i = 0; i < CLR_SIZE; i++)
-		fprintf(fp, "%s\n", colors[i]);
+		fprintf(fp, "%s\n", hexes[i]);
 
 	if (fclose(fp) != 0 || rename(tmp, path) != 0)
 		unlink(tmp);
 }
 
 /*
- * Looks 'clr' up in 'db' under "dwmblocks.<name>" then "*<name>", storing
- * the rendered escape on the first valid hit.
+ * Looks 'clr' up in 'db' under "dwmblocks.<name>" then "*<name>", keeping
+ * the first valid hit.
  */
 static void
 clr_load(XrmDatabase db, enum Color clr)
@@ -203,7 +240,7 @@ clr_load(XrmDatabase db, enum Color clr)
 	char    *type = NULL;
 	char     name[256];
 
-	for (size_t i = 0; i < sizeof(prefixes) / sizeof(prefixes[0]); i++) {
+	for (size_t i = 0; i < LEN(prefixes); i++) {
 		snprintf(name, sizeof(name), "%s%s", prefixes[i], names[clr]);
 
 		if (!XrmGetResource(db, name, "*", &type, &ret) || !ret.addr)
@@ -212,12 +249,12 @@ clr_load(XrmDatabase db, enum Color clr)
 		if (!ishexcolor(ret.addr))
 			continue;
 
-		snprintf(colors[clr], sizeof(colors[clr]), "^c%s^", ret.addr);
+		sethex(clr, ret.addr);
 		return;
 	}
 }
 
-/* Resolves every colour from X. Returns 0 if the display was reachable. */
+/* Overrides the defaults with anything found in X. Returns 0 if X answered. */
 static int
 clr_loadall(void)
 {
@@ -227,7 +264,7 @@ clr_loadall(void)
 
 	dpy = XOpenDisplay(NULL);
 	if (!dpy) {
-		warn("XOpenDisplay() failed, rendering without colour");
+		warn("XOpenDisplay() failed, using the configured defaults");
 		return 1;
 	}
 
@@ -255,14 +292,18 @@ clr_init(void)
 
 	havepath = (cachepath(path, sizeof(path)) == 0);
 
-	if (havepath && !cachestale(path) && cacheload(path) == 0)
+	if (havepath && !cachestale(path) && cacheload(path) == 0) {
+		render();
 		return;
+	}
 
-	if (clr_loadall() != 0)
-		return;
+	for (size_t i = 0; i < CLR_SIZE; i++)
+		sethex((enum Color)i, clr_defaults[i]);
 
-	if (havepath)
+	if (clr_loadall() == 0 && havepath)
 		cachestore(path);
+
+	render();
 }
 
 const char *
@@ -272,6 +313,15 @@ clr_get(enum Color clr)
 		return "";
 
 	return colors[clr];
+}
+
+const char *
+clr_hex(enum Color clr)
+{
+	if ((unsigned int)clr >= (unsigned int)CLR_SIZE)
+		return "";
+
+	return hexes[clr];
 }
 
 #endif /* NO_COLOR */

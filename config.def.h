@@ -7,6 +7,55 @@ static const char term_cmd[] = "st";
 static const char term_title_opt[] = "-t";
 
 /* ============================================================
+ * COLOURS
+ * ============================================================ */
+
+/*
+ * How a colour is written into the status line. CLR_FMT must contain
+ * exactly one %s, which receives a "#RRGGBB" string; CLR_NRM ends the
+ * coloured run. The defaults target dwm's status2d patch.
+ *
+ *   NAME                            CLR_FMT                  CLR_NRM
+ *   status2d (dwm)                  "^c%s^"                  "^d^"
+ *   Pango (waybar, polybar, i3bar)  "<span color='%s'>"      "</span>"
+ *   polybar native                  "%%{F%s}"                "%%{F-}"
+ *   no colour                       "%.0s"                   ""
+ */
+#define CLR_FMT "^c%s^"
+#define CLR_NRM "^d^"
+
+/*
+ * Default colours, listed in enum Color order (see src/include/colors.h).
+ * An empty string leaves that colour unset, so the block renders in the
+ * status bar's own colour. Matching entries in the X resource database
+ * override these at runtime, e.g.
+ *
+ *   dwmblocks.clr_bat_crt: #F38BA8
+ *
+ * A compile-time check in colors.c fails the build if this list and the
+ * enum ever fall out of step.
+ */
+static const char *const clr_defaults[] = {
+	"#F38BA8",  /* clr_bat_crt  battery critical */
+	"#F9E2AF",  /* clr_bat_low  battery low      */
+	"#CDD6F4",  /* clr_bat_nrm  battery normal   */
+	"#CDD6F4",  /* clr_bat_chg  battery charging */
+	"#CDD6F4",  /* clr_bt       bluetooth        */
+	"#CDD6F4",  /* clr_date     date             */
+	"#CDD6F4",  /* clr_net_nrm  network normal   */
+	"#F38BA8",  /* clr_net_err  network error    */
+	"#89B4FA",  /* clr_krn_pkg  pending updates  */
+	"#CDD6F4",  /* clr_krn_nrm  kernel release   */
+	"#CDD6F4",  /* clr_kbd      keyboard layout  */
+	"#CDD6F4",  /* clr_mem      memory           */
+	"#F38BA8",  /* clr_pwr      power menu       */
+	"#CDD6F4",  /* clr_tim      clock            */
+	"#CDD6F4",  /* clr_vol_nrm  volume normal    */
+	"#F38BA8",  /* clr_vol_mut  volume muted     */
+	"#F38BA8"   /* clr_cal      calendar accent   */
+};
+
+/* ============================================================
  * BATTERY BLOCK
  * ============================================================ */
 #ifdef BATTERY_C
@@ -61,9 +110,6 @@ const char *args_gui_calendar[] = {
 
 /* Icon shown in the bar when show_icon is set. */
 static const char icon_date[] = " ";
-
-/* Accent colour for weekends and the current day (Pango markup). */
-#define CAL_ACCENT "#F38BA8"
 #endif
 
 /* ============================================================

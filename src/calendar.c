@@ -4,7 +4,6 @@
 #include <string.h>
 
 #include "calendar.h"
-#include "config.h"
 
 /* Colour used for weekend columns and the current day (Pango markup). */
 #ifndef CAL_ACCENT
@@ -65,8 +64,8 @@ cal_monthname(const int m)
 }
 
 int
-cal_render(char *buf, const size_t bufsz, const int mday, const int wday,
-           const int m, const int y)
+cal_render(char *buf, const size_t bufsz, const char *accent,
+           const int mday, const int wday, const int m, const int y)
 {
 	size_t off   = 0;
 	int    fday  = 0;
@@ -80,10 +79,18 @@ cal_render(char *buf, const size_t bufsz, const int mday, const int wday,
 	if (daysm == 0)
 		return 1;
 
+	/* An unset colour renders the calendar without markup. */
+	if (accent && !*accent)
+		accent = NULL;
+
 	fday = cal_firstday(mday, wday);
 
-	n = snprintf(buf, bufsz,
-	             "Mo Tu We Th Fr <span color='" CAL_ACCENT "'>Sa Su</span>\n");
+	if (accent)
+		n = snprintf(buf, bufsz,
+		             "Mo Tu We Th Fr <span color='%s'>Sa Su</span>\n", accent);
+	else
+		n = snprintf(buf, bufsz, "Mo Tu We Th Fr Sa Su\n");
+
 	if (n < 0 || (size_t)n >= bufsz)
 		return 1;
 	off = (size_t)n;
@@ -104,12 +111,15 @@ cal_render(char *buf, const size_t bufsz, const int mday, const int wday,
 			off += (size_t)n;
 		}
 
-		if (i == mday)
+		if (i == mday && accent)
 			n = snprintf(buf + off, bufsz - off,
-			             "<span color='black' bgcolor='" CAL_ACCENT "'>%2d</span> ", i);
-		else if (fday == 5 || fday == 6)
+			             "<span color='black' bgcolor='%s'>%2d</span> ",
+			             accent, i);
+		else if (i == mday)
+			n = snprintf(buf + off, bufsz - off, "<b>%2d</b> ", i);
+		else if (accent && (fday == 5 || fday == 6))
 			n = snprintf(buf + off, bufsz - off,
-			             "<span color='" CAL_ACCENT "'>%2d</span> ", i);
+			             "<span color='%s'>%2d</span> ", accent, i);
 		else
 			n = snprintf(buf + off, bufsz - off, "%2d ", i);
 

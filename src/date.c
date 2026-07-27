@@ -1,7 +1,6 @@
 /* See LICENSE file for copyright and license details. */
 
 #include <stdio.h>
-#include <stdlib.h>
 #include <time.h>
 
 #define DATE_C
@@ -31,8 +30,8 @@ on_left(void *ctx)
 		return;
 	}
 
-	if (cal_render(body, sizeof(body), lt->tm_mday, lt->tm_wday,
-	               lt->tm_mon, lt->tm_year + 1900) != 0 ||
+	if (cal_render(body, sizeof(body), clr_hex(clr_cal), lt->tm_mday,
+	               lt->tm_wday, lt->tm_mon, lt->tm_year + 1900) != 0 ||
 	    cal_heading(head, sizeof(head), lt->tm_mon, lt->tm_year + 1900) != 0) {
 		warn("failed to render calendar");
 		return;
