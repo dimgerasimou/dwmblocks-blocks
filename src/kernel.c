@@ -75,7 +75,30 @@ cachepath(char *out, const size_t outsz)
 	return (n < 0 || (size_t)n >= outsz) ? 1 : 0;
 }
 
-/* Returns 0 and fills 'u' if a cache entry exists and is younger than the TTL. */
+/*
+ * The cache is stale once the TTL has passed, or as soon as the pacman
+ * local database is newer than it. The second test is what makes a
+ * post-transaction hook work: the block cannot observe the signal that
+ * dwmblocks sends (it is simply re-executed), but installing or removing
+ * a package always touches the local database, so the count refreshes on
+ * the very next run instead of waiting out the TTL.
+ */
+static int
+cachestale(const struct stat *cst)
+{
+	struct stat dbst;
+
+	if (time(NULL) - cst->st_mtime > update_cache_ttl)
+		return 1;
+
+	if (pacman_local_db[0] && stat(pacman_local_db, &dbst) == 0 &&
+	    dbst.st_mtime > cst->st_mtime)
+		return 1;
+
+	return 0;
+}
+
+/* Returns 0 and fills 'u' if a usable, fresh cache entry exists. */
 static int
 cacheload(const char *path, struct Updates *u)
 {
@@ -83,10 +106,14 @@ cacheload(const char *path, struct Updates *u)
 	FILE       *fp;
 	int         ok;
 
+	/* A non-positive TTL disables caching entirely. */
+	if (update_cache_ttl <= 0)
+		return 1;
+
 	if (stat(path, &st) != 0)
 		return 1;
 
-	if (time(NULL) - st.st_mtime > update_cache_ttl)
+	if (cachestale(&st))
 		return 1;
 
 	fp = fopen(path, "r");
@@ -140,7 +167,7 @@ refresh(struct Updates *u)
 	if (u->aur < 0 || u->pm < 0)
 		return;
 
-	if (cachepath(path, sizeof(path)) == 0)
+	if (update_cache_ttl > 0 && cachepath(path, sizeof(path)) == 0)
 		cachestore(path, u);
 }
 

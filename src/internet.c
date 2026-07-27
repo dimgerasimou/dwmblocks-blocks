@@ -7,7 +7,6 @@
 #include <NetworkManager.h>
 #include <nm-dbus-interface.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 #define INTERNET_C
@@ -136,7 +135,7 @@ on_right(void *ctx)
 	case 1: {
 		char path[PATH_MAX];
 
-		if (getpath(path_wifi_connect, path, sizeof(path)) == 0)
+		if (envexpand(path_wifi_connect, path, sizeof(path)) == 0)
 			executepath(path, (char **)args_wifi_connect);
 		break;
 	}

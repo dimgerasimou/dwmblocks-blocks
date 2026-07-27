@@ -61,12 +61,12 @@ void execute(char **args);
 void executepath(const char *path, char **args);
 
 /*
- * Joins a NULL-terminated array of path components into 'out'. A component
- * beginning with '$' is replaced by the named environment variable; every
- * other component is prefixed with '/'.
+ * Expands a path into 'out'. A leading "~" or "~/" becomes $HOME, and
+ * "$VAR" or "${VAR}" anywhere in the string is replaced by that variable.
+ * A '$' not followed by a name is copied through literally.
  * Returns 0 on success, 1 if a variable was unset or 'out' was too small.
  */
-int getpath(const char *const *parts, char *out, const size_t outsz);
+int envexpand(const char *path, char *out, const size_t outsz);
 
 /*
  * Presents 'menu' via xmenu(1) and returns the selected option's value,

@@ -179,40 +179,144 @@ executepath(const char *path, char **args)
 	}
 }
 
-int
-getpath(const char *const *parts, char *out, const size_t outsz)
+/* Appends 'len' bytes of 's' to 'out'. Returns 1 if it would not fit. */
+static int
+strappend(char *out, const size_t outsz, size_t *off, const char *s,
+          const size_t len)
 {
-	size_t off = 0;
-	int    n   = 0;
+	if (*off >= outsz || len >= outsz - *off)
+		return 1;
 
-	if (!parts || !out || outsz == 0)
+	memcpy(out + *off, s, len);
+	*off += len;
+	out[*off] = '\0';
+
+	return 0;
+}
+
+/* Returns the length of the variable name at 's', or 0 if there is none. */
+static size_t
+varnamelen(const char *s)
+{
+	size_t n = 0;
+
+	while (s[n] == '_' || (s[n] >= 'a' && s[n] <= 'z') ||
+	       (s[n] >= 'A' && s[n] <= 'Z') || (n > 0 && s[n] >= '0' && s[n] <= '9'))
+		n++;
+
+	return n;
+}
+
+/*
+ * Looks up the variable named by the 'len' bytes at 'name'. Returns NULL
+ * and warns if it is unset or the name is unreasonably long.
+ */
+static const char *
+lookupvar(const char *name, const size_t len)
+{
+	char        buf[128];
+	const char *env;
+
+	if (len == 0 || len >= sizeof(buf))
+		return NULL;
+
+	memcpy(buf, name, len);
+	buf[len] = '\0';
+
+	env = getenv(buf);
+	if (!env)
+		warn("getenv() for: %s", buf);
+
+	return env;
+}
+
+int
+envexpand(const char *path, char *out, const size_t outsz)
+{
+	const char *p = path;
+	size_t      off = 0;
+
+	if (!path || !out || outsz == 0)
 		return 1;
 
 	out[0] = '\0';
 
-	for (size_t i = 0; parts[i]; i++) {
-		if (parts[i][0] == '$') {
-			const char *env = getenv(parts[i] + 1);
+	/* A leading "~" or "~/" is shorthand for $HOME. */
+	if (p[0] == '~' && (p[1] == '\0' || p[1] == '/')) {
+		const char *home = getenv("HOME");
 
-			if (!env) {
-				warn("getenv() for: %s", parts[i]);
-				return 1;
-			}
-
-			n = snprintf(out + off, outsz - off, "%s", env);
-		} else {
-			n = snprintf(out + off, outsz - off, "/%s", parts[i]);
-		}
-
-		if (n < 0 || (size_t)n >= outsz - off) {
-			warn("getpath: path too long");
+		if (!home) {
+			warn("getenv() for: HOME");
 			return 1;
 		}
 
-		off += (size_t)n;
+		if (strappend(out, outsz, &off, home, strlen(home)) != 0)
+			goto toolong;
+
+		p++;
+	}
+
+	while (*p) {
+		const char *name, *val;
+		size_t      len;
+
+		if (*p != '$') {
+			const char *next = strchr(p, '$');
+			size_t      run  = next ? (size_t)(next - p) : strlen(p);
+
+			if (strappend(out, outsz, &off, p, run) != 0)
+				goto toolong;
+
+			p += run;
+			continue;
+		}
+
+		/* "${VAR}" */
+		if (p[1] == '{') {
+			const char *close = strchr(p + 2, '}');
+
+			if (!close) {
+				warn("unterminated ${ in path: %s", path);
+				return 1;
+			}
+
+			name = p + 2;
+			len  = (size_t)(close - name);
+			val  = lookupvar(name, len);
+
+			if (!val)
+				return 1;
+
+			p = close + 1;
+		} else {
+			name = p + 1;
+			len  = varnamelen(name);
+
+			/* A bare '$' is not a variable; copy it through. */
+			if (len == 0) {
+				if (strappend(out, outsz, &off, p, 1) != 0)
+					goto toolong;
+				p++;
+				continue;
+			}
+
+			val = lookupvar(name, len);
+
+			if (!val)
+				return 1;
+
+			p = name + len;
+		}
+
+		if (strappend(out, outsz, &off, val, strlen(val)) != 0)
+			goto toolong;
 	}
 
 	return 0;
+
+toolong:
+	warn("envexpand: expanded path too long: %s", path);
+	return 1;
 }
 
 int

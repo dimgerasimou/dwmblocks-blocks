@@ -3,7 +3,6 @@
 #define _POSIX_C_SOURCE 200809L
 
 #include <limits.h>
-#include <math.h>
 #include <pulse/pulseaudio.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -22,10 +21,12 @@ typedef struct {
 	unsigned int done;
 } AudioInfo;
 
-/* [0] = default sink, [1] = default source. */
-#define AI_SINK   0
-#define AI_SOURCE 1
-#define AI_COUNT  2
+/* Indices into the AudioInfo array; AI_COUNT is its length. */
+enum AudioIndex {
+	AI_SINK = 0,
+	AI_SOURCE,
+	AI_COUNT
+};
 
 
 static pa_mainloop *ml = NULL;
@@ -83,7 +84,7 @@ runvolumecmd(const char *const *args)
 {
 	char path[PATH_MAX];
 
-	if (getpath(path_volume_control, path, sizeof(path)) == 0)
+	if (envexpand(path_volume_control, path, sizeof(path)) == 0)
 		executepath(path, (char **)args);
 }
 

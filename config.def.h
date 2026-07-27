@@ -80,7 +80,7 @@ const char *args_tui_internet[] = {
 };
 
 /* WiFi connection script */
-const char *path_wifi_connect[] = {"$HOME", ".local", "bin", "dmenu-wifi-prompt", NULL};
+const char *path_wifi_connect = "~/.local/bin/dmenu-wifi-prompt";
 const char *args_wifi_connect[] = {"dmenu-wifi-prompt", NULL};
 
 
@@ -138,8 +138,18 @@ static const char icon_kernel_pkg[] = "󰏖";
 static const char icon_kernel_pacman[] = "󰏖";
 static const char icon_kernel_aur[] = "";
 
-/* Seconds before cached update counts are refreshed. */
+/*
+ * Seconds before cached update counts are refreshed. Set to 0 to disable
+ * caching entirely and query on every run.
+ */
 static const long update_cache_ttl = 3600;
+
+/*
+ * The cache is also invalidated whenever this path's mtime is newer than
+ * it, which is how a pacman post-transaction hook makes the count drop to
+ * zero immediately instead of waiting for the TTL.
+ */
+static const char pacman_local_db[] = "/var/lib/pacman/local";
 #endif
 
 /* ============================================================
@@ -150,7 +160,7 @@ static const long update_cache_ttl = 3600;
 const unsigned int show_icon = 1;
 
 /* Keyboard layout switching script */
-const char *path_language_switch[] = { "$HOME", ".local", "bin", "dwm-xkbnext", NULL };
+const char *path_language_switch = "~/.local/bin/dwm-xkbnext";
 const char *args_language_switch[] = { "dwm-xkbnext", NULL };
 
 
@@ -185,8 +195,8 @@ static const char icon_memory[] = " ";
 #define POWER_MANAGEMENT
 
 /* dwmblocks executable path and arguments */
-const char *path_dwmblocks[]        = {"usr", "local", "bin", "dwmblocks", NULL};
-const char *args_dwmblocks[]        = {"dwmblocks", NULL};
+const char *path_dwmblocks = "/usr/local/bin/dwmblocks";
+const char *args_dwmblocks[] = {"dwmblocks", NULL};
 
 /* Lock screen command */
 const char *args_lockscreen[]       = {"slock", NULL};
@@ -242,7 +252,7 @@ const char *args_eqalizer[]        = {"easyeffects", NULL};
 const char *args_volume_increase[] = {"dwm-audio", "up", NULL};
 const char *args_volume_decrase[]  = {"dwm-audio", "down", NULL};
 const char *args_volume_mute[]     = {"dwm-audio", "mute", NULL};
-const char *path_volume_control[]  = {"$HOME", ".local", "bin", "dwm-audio", NULL};
+static const char path_volume_control[] = "~/.local/bin/dwm-audio";
 
 
 /* Bar icons: [0] muted, [1] low, [2] medium, [3] high, [4] no sink. */

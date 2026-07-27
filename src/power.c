@@ -2,7 +2,6 @@
 
 #define _POSIX_C_SOURCE 200809L
 
-#include <errno.h>
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -122,7 +121,7 @@ restartdwmblocks(void)
 
 	pid = getpidof("dwmblocks");
 
-	if (pid < 0 && getpath(path_dwmblocks, path, sizeof(path)) == 0)
+	if (pid < 0 && envexpand(path_dwmblocks, path, sizeof(path)) == 0)
 		pid = getpidof(path);
 
 	if (pid < 0) {

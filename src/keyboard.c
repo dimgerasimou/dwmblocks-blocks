@@ -78,8 +78,8 @@ on_left(void *ctx)
 
 	(void)ctx;
 
-	if (getpath(path_language_switch, path, sizeof(path)) != 0) {
-		warn("getpath() failed for language switch");
+	if (envexpand(path_language_switch, path, sizeof(path)) != 0) {
+		warn("failed to expand the language switch path");
 		return;
 	}
 
