@@ -57,21 +57,21 @@ static const char term_title_opt[] = "-t";
  */
 static const char *const clr_defaults[] = {
 	"#F38BA8",  /* clr_bat_crt  battery critical */
-	"#FAB387",  /* clr_bat_low  battery low      */
-	"#A6E3A1",  /* clr_bat_nrm  battery normal   */
-	"#A6E3A1",  /* clr_bat_chg  battery charging */
-	"#89B4FA",  /* clr_bt       bluetooth        */
-	"#CBA6F7",  /* clr_date     date             */
-	"#94E2D5",  /* clr_net_nrm  network normal   */
+	"#F9E2AF",  /* clr_bat_low  battery low      */
+	"#CDD6F4",  /* clr_bat_nrm  battery normal   */
+	"#F9E2AF",  /* clr_bat_chg  battery charging */
+	"#CDD6F4",  /* clr_bt       bluetooth        */
+	"#CDD6F4",  /* clr_date     date             */
+	"#CDD6F4",  /* clr_net_nrm  network normal   */
 	"#F38BA8",  /* clr_net_err  network error    */
-	"#F9E2AF",  /* clr_sys_pkg  pending updates  */
-	"#89DCEB",  /* clr_sys_nrm  kernel release   */
-	"#B4BEFE",  /* clr_kbd      keyboard layout  */
-	"#F5C2E7",  /* clr_mem      memory           */
+	"#89B4FA",  /* clr_sys_pkg  pending updates  */
+	"#CDD6F4",  /* clr_sys_nrm  kernel release   */
+	"#CDD6F4",  /* clr_kbd      keyboard layout  */
+	"#CDD6F4",  /* clr_mem      memory           */
 	"#F38BA8",  /* clr_pwr      power menu       */
-	"#FAB387",  /* clr_tim      clock            */
-	"#A6E3A1",  /* clr_vol_nrm  volume normal    */
-	"#6C7086",  /* clr_vol_mut  volume muted     */
+	"#CDD6F4",  /* clr_tim      clock            */
+	"#CDD6F4",  /* clr_vol_nrm  volume normal    */
+	"#F38BA8",  /* clr_vol_mut  volume muted     */
 	"#F38BA8"   /* clr_cal      calendar accent   */
 };
 
@@ -118,15 +118,6 @@ static const char *const icons_bluetooth[] = {
 
 /* Show calendar icon in bar */
 const unsigned int show_icon = 1;
-
-/* Calendar opened on right click. Requires: the browser named below. */
-const char *args_gui_calendar[] = {
-	"zen-browser",
-	"--new-window",
-	"https://calendar.google.com",
-	NULL
-};
-
 
 /*
  * First column of the calendar, as a tm_wday value: 1 = Monday (most of
