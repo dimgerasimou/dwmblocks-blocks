@@ -311,19 +311,11 @@ on_left(void *ctx)
 	notify(head, body, "calendar");
 }
 
-static void
-on_right(void *ctx)
-{
-	(void)ctx;
-	execute((char **)args_gui_calendar);
-}
-
 int
 main(void)
 {
 	static const struct Button buttons[] = {
 		{ 1, on_left },
-		{ 3, on_right },
 	};
 
 	struct tm *lt = NULL;
