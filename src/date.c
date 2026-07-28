@@ -321,7 +321,7 @@ main(void)
 	struct tm *lt = NULL;
 	time_t     ct = 0;
 
-	set_name("dwmblocks-date");
+	set_name("statusblocks-date");
 
 	/* Month and weekday names in the calendar follow the user's locale. */
 	setlocale(LC_TIME, "");

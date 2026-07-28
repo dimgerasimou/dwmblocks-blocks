@@ -256,7 +256,7 @@ main(void)
 	char          st[64];
 	size_t        i;
 
-	set_name("dwmblocks-battery");
+	set_name("statusblocks-battery");
 	clr_init();
 
 	if (getbatterypath(base, sizeof(base)) != 0) {

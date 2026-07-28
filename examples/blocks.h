@@ -1,5 +1,5 @@
 /*
- * Example status bar configuration for dwmblocks-blocks.
+ * Example status bar configuration for statusblocks.
  *
  * Two forms are given below, since dwmblocks forks differ. Use whichever
  * matches yours and delete the other; the intervals and signals are the
@@ -35,7 +35,7 @@
  *   Target = *
  *
  *   [Action]
- *   Description = Refresh the dwmblocks system block
+ *   Description = Refresh the statusblocks system block
  *   When = PostTransaction
  *   Exec = /usr/bin/pkill -RTMIN+9 dwmblocks
  *
@@ -43,14 +43,17 @@
  * update_watch_path, so the hook only needs to make it re-run.
  *
  * BLOCKDIR below must match where `make install` put the binaries; the
- * default is ~/.local/bin/dwmblocks.
+ * default is ~/.local/bin/statusblocks.
  */
 
-#define BLOCKDIR "/home/user/.local/bin/dwmblocks"
+#define BLOCKDIR "/home/user/.local/bin/statusblocks"
 
 /* ------------------------------------------------------------------
  * Form A: vanilla dwmblocks, an array of Block structs.
+ * Enable this one or Form B below, never both: they define the same
+ * symbol.
  * ------------------------------------------------------------------ */
+#if 0
 static const Block blocks[] = {
 	/* icon  command                     interval  signal */
 	{ "",    BLOCKDIR "/internet",         10,      1 },
@@ -67,6 +70,7 @@ static const Block blocks[] = {
 
 static char delim[] = " ";
 static unsigned int delimLen = 5;
+#endif
 
 /* ------------------------------------------------------------------
  * Form B: dwmasyncblocks, an X macro of (icon, command, interval, signal).
@@ -76,7 +80,7 @@ static unsigned int delimLen = 5;
 #define DELIMITER " "
 #define TRIM_TRAILING_SPACES 0
 
-#define BLOCK(NAME) "$HOME/.local/bin/dwmblocks/" #NAME
+#define BLOCK(NAME) "$HOME/.local/bin/statusblocks/" #NAME
 
 const Block blocks[] = {
 	/*Command             Update Interval   Update Signal */

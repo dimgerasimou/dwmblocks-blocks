@@ -1,4 +1,4 @@
-# dwmblocks-blocks
+# statusblocks
 # See LICENSE file for copyright and license details.
 
 VERSION ?= 1.0.0
@@ -18,7 +18,7 @@ CPPFLAGS += -MMD -MP -DVERSION=\"${VERSION}\" -I$(INCLUDE) -I.
 # clutter $(BINDIR); point dwmblocks' config at $(BLOCKDIR).
 PREFIX   ?= $(HOME)/.local
 BINDIR   ?= $(PREFIX)/bin
-BLOCKDIR ?= $(BINDIR)/dwmblocks
+BLOCKDIR ?= $(BINDIR)/statusblocks
 
 # Directory structure
 SRC_DIR   := src
@@ -26,8 +26,6 @@ BUILD_DIR := build
 BIN_DIR   := $(BUILD_DIR)/bin
 OBJ_DIR   := $(BUILD_DIR)/obj
 INCLUDE   := $(SRC_DIR)/include
-TESTS_DIR := $(SRC_DIR)/tests
-TEST_DIR  := $(BUILD_DIR)/tests
 
 # Per-library flags. Each block pulls in only what it actually uses, so a
 # missing libnm does not stop you building the clock.
@@ -105,7 +103,7 @@ $(BLOCKS): %: $(BIN_DIR)/%
 
 $(BIN_DIR)/%: $(OBJ_DIR)/%.o $(UTILS_OBJ) | $(BIN_DIR)
 	@$(PRINTF) "$(COLOR_GREEN)Linking:$(COLOR_RESET) %s\n" "$@"
-	@$(CC) $(LDFLAGS) -o $@ $< $(UTILS_OBJ) $(EXTRA_OBJS) $(COMMON_LIBS) $(BLOCK_LIBS) $(LDLIBS)
+	@$(CC) $(LDFLAGS) -o $@ $< $(UTILS_OBJ) $(COMMON_LIBS) $(BLOCK_LIBS) $(LDLIBS)
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c config.h | $(OBJ_DIR)
 	@$(PRINTF) "$(COLOR_BLUE)Compiling:$(COLOR_RESET) %s\n" "$@"

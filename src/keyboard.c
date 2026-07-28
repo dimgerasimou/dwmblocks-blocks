@@ -98,7 +98,7 @@ main(void)
 	XkbRF_VarDefsRec vd = {0};
 	char *layout = NULL;
 
-	set_name("dwmblocks-keyboard");
+	set_name("statusblocks-keyboard");
 	clr_init();
 
 	dispatch(buttons, LEN(buttons), NULL);

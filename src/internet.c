@@ -141,7 +141,7 @@ on_right(void *ctx)
 	}
 
 	case 2:
-		execute((char **)args_tui_internet);
+		execute_term((char **)args_tui_internet);
 		break;
 
 	default:
@@ -328,7 +328,7 @@ main(void)
 	struct Context c = { NULL, 0 };
 	unsigned int   state = 0;
 
-	set_name("dwmblocks-internet");
+	set_name("statusblocks-internet");
 	clr_init();
 
 	nminit(&c.client);

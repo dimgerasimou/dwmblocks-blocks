@@ -1,4 +1,4 @@
-# dwmblocks-blocks
+# statusblocks
 
 This repository contains blocks, executables that display a single part of a status line. These can be used by a status line application, e.g. [dwmblocks](https://github.com/dimgerasimou/dwmasyncblocks).
 
@@ -17,7 +17,7 @@ make
 make install
 ```
 
-Blocks are installed to `$(BLOCKDIR)`, which defaults to `~/.local/bin/dwmblocks`. Point your dwmblocks configuration at that directory; `examples/blocks.h` is a ready-made starting point with suggested intervals and signals for every block, plus the pacman hook that pairs with the system block.
+Blocks are installed to `$(BLOCKDIR)`, which defaults to `~/.local/bin/statusblocks`. Point your dwmblocks configuration at that directory; `examples/blocks.h` is a ready-made starting point with suggested intervals and signals for every block, plus the pacman hook that pairs with the system block.
 
 Useful variables:
 
@@ -25,7 +25,7 @@ Useful variables:
 |------------|--------------------------|--------------------------------------------|
 | `PREFIX`   | `$(HOME)/.local`         | Installation prefix                        |
 | `BINDIR`   | `$(PREFIX)/bin`          | Binary directory                           |
-| `BLOCKDIR` | `$(BINDIR)/dwmblocks`    | Where the blocks themselves are installed  |
+| `BLOCKDIR` | `$(BINDIR)/statusblocks` | Where the blocks themselves are installed  |
 | `DESTDIR`  | *(empty)*                | Staging root, for packaging                |
 | `CC`       | `cc`                     | Compiler                                   |
 | `CFLAGS`   | `-Os`                    | Optimisation and extra flags               |
@@ -75,21 +75,21 @@ static const char *const clr_defaults[] = {
 
 Set an entry to `""` to leave that colour unset, so the block renders in the status bar's own colour. A compile-time check fails the build if the list and `enum Color` ever fall out of step.
 
-Any entry in the X resource database overrides the matching default at runtime, so a colour can be changed without rebuilding. Each colour is looked up first as `dwmblocks.<name>`, then as `*<name>`, and values must be exactly `#RRGGBB`; anything malformed is ignored in favour of the default.
+Any entry in the X resource database overrides the matching default at runtime, so a colour can be changed without rebuilding. Each colour is looked up first as `statusblocks.<name>`, then as `*<name>`, and values must be exactly `#RRGGBB`; anything malformed is ignored in favour of the default.
 
 ```
-dwmblocks.clr_bat_crt:  #F38BA8
-dwmblocks.clr_date:     #CBA6F7
-dwmblocks.clr_tim:      #FAB387
-dwmblocks.clr_cal:      #F38BA8
+statusblocks.clr_bat_crt:  #F38BA8
+statusblocks.clr_date:     #CBA6F7
+statusblocks.clr_tim:      #FAB387
+statusblocks.clr_cal:      #F38BA8
 ```
 
 Apply with `xrdb -merge ~/.Xresources`.
 
-Resolved colours are cached in `$XDG_RUNTIME_DIR/dwmblocks-colors`, so only the first block to run in a session opens an X connection. The cache is rebuilt automatically when `~/.Xresources` is newer than it, or when the block binary is (so editing `clr_defaults` and rebuilding takes effect immediately). `$XDG_RUNTIME_DIR` is cleared at logout. To force a rebuild by hand:
+Resolved colours are cached in `$XDG_RUNTIME_DIR/statusblocks-colors`, so only the first block to run in a session opens an X connection. The cache is rebuilt automatically when `~/.Xresources` is newer than it, or when the block binary is (so editing `clr_defaults` and rebuilding takes effect immediately). `$XDG_RUNTIME_DIR` is cleared at logout. To force a rebuild by hand:
 
 ```bash
-rm -f "$XDG_RUNTIME_DIR/dwmblocks-colors"
+rm -f "$XDG_RUNTIME_DIR/statusblocks-colors"
 ```
 
 If X is unreachable the configured defaults are used on their own, and nothing is cached, so colours appear as soon as X is available.
@@ -120,6 +120,8 @@ A leading `~` or `~/` becomes `$HOME`, and `$VAR` or `${VAR}` anywhere in the st
 ## External programs
 
 Most blocks display something with no help, but the click actions often shell out. Every such setting in `config.h` is marked `Requires:` with what it needs. In summary:
+
+Blocks that open a TUI use `$TERM` if it names a real program, then `$TERMINAL`, then `term_cmd` from `config.h`. `$TERM` normally holds a terminfo name such as `st-256color` rather than a program, so in practice `$TERMINAL` or `term_cmd` is what gets used.
 
 | Block     | Needed for display | Needed for clicks                                    |
 |-----------|--------------------|------------------------------------------------------|
@@ -210,13 +212,13 @@ Optional:
 
 #### Usage
 
-Returns the current kernel version and the number of packages to be updated, notifies the number of AUR or pacman packages to be upgraded, and can perform a system upgrade.
+Returns the number of packages to be updated and the current kernel version, notifies the counts from each configured update source, and can perform a system upgrade.
 
 Left click notifies the update counts; right click runs the upgrade command.
 
 The block counts updates from two configurable sources and is not tied to Arch: set `cmd_updates_primary`, `cmd_updates_secondary`, their labels, and `update_watch_path` in `config.h`. Equivalents for apt, dnf and xbps are given in the comments there; set a command to `""` to disable that source. Each command should print one line per pending update, and the exit status is ignored, because several package managers exit non-zero precisely when there is nothing to update.
 
-Both update commands hit the network — `checkupdates` syncs the repository databases into a temporary path, and `paru -Qua` queries the AUR — so their results are cached in `$XDG_RUNTIME_DIR/dwmblocks-updates`. The cache is discarded when any of these happens:
+Both update commands hit the network — `checkupdates` syncs the repository databases into a temporary path, and `paru -Qua` queries the AUR — so their results are cached in `$XDG_RUNTIME_DIR/statusblocks-updates`. The cache is discarded when any of these happens:
 
 - `update_cache_ttl` seconds have passed (one hour by default; set it to `0` in `config.h` to disable caching and query on every run)
 - the pacman local database at `pacman_local_db` is newer than the cache
@@ -233,7 +235,7 @@ Type = Package
 Target = *
 
 [Action]
-Description = Refresh the dwmblocks system block
+Description = Refresh the statusblocks system block
 When = PostTransaction
 Exec = /usr/bin/pkill -RTMIN+<n> dwmblocks
 ```
@@ -330,14 +332,7 @@ dispatch(buttons, LEN(buttons), NULL);
 
 The build uses a strict warning set (`-Wconversion`, `-Wsign-conversion`, `-Wshadow`, `-Wformat=2`, and friends) and the tree builds warning-free. Please keep it that way.
 
-```bash
-make test    # unit tests, run under AddressSanitizer and UBSan
-make debug   # full rebuild with sanitizers and, on GCC, -fanalyzer
-```
-
-Tests live in `src/tests/`. `make test` builds and runs each one; a non-zero exit fails the build. `test-calendar` checks the date arithmetic against `mktime` for every day between 2020 and 2030.
-
-CI builds every combination of the `POWER_MANAGEMENT`, `CLIPBOARD` and `NO_COLOR` toggles under both GCC and Clang. Config branches that are never compiled are exactly the ones that rot, so please keep the matrix green rather than trimming it.
+Every setting in `config.h` gates a branch of code, so when changing one, build with the other combinations too — an unselected branch is exactly the kind that quietly stops compiling.
 
 ## License
 

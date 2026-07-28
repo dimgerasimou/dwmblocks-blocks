@@ -22,7 +22,10 @@
  * dwmblocks discards; run the block by hand in a terminal to see it.
  */
 
-/* Terminal used by blocks that open a TUI. Requires: this terminal. */
+/*
+ * Terminal used by blocks that open a TUI. $TERMINAL overrides it at
+ * runtime, so this is only the fallback. Requires: one of the two.
+ */
 static const char term_cmd[] = "st";
 static const char term_title_opt[] = "-t";
 
@@ -50,7 +53,7 @@ static const char term_title_opt[] = "-t";
  * status bar's own colour. Matching entries in the X resource database
  * override these at runtime, e.g.
  *
- *   dwmblocks.clr_bat_crt: #F38BA8
+ *   statusblocks.clr_bat_crt: #F38BA8
  *
  * A compile-time check in colors.c fails the build if this list and the
  * enum ever fall out of step.
@@ -196,8 +199,8 @@ static const char menu_internet[] = "󱛄 Toggle Wifi\t0\n󱛃 Connect to wifi\t
  */
 
 /* Requires: a package manager, and an AUR helper for the secondary source. */
-const char *cmd_updates_primary   = "/bin/checkupdates";
-const char *cmd_updates_secondary = "/bin/paru -Qua";
+const char *cmd_updates_primary   = "checkupdates";
+const char *cmd_updates_secondary = "paru -Qua";
 
 /* Labels used in the notification, one per source. */
 static const char label_updates_primary[]   = "Pacman Updates";

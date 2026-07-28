@@ -138,6 +138,67 @@ execute(char **args)
 	}
 }
 
+/* Returns 1 if 'cmd' names an executable, searching $PATH when unqualified. */
+static int
+isexec(const char *cmd)
+{
+	char        buf[PATH_MAX];
+	const char *path, *p;
+
+	if (!cmd || !*cmd)
+		return 0;
+
+	if (strchr(cmd, '/'))
+		return access(cmd, X_OK) == 0;
+
+	path = getenv("PATH");
+	if (!path || !*path)
+		path = "/usr/local/bin:/usr/bin:/bin";
+
+	for (p = path; *p;) {
+		const char *end = strchr(p, ':');
+		size_t      len = end ? (size_t)(end - p) : strlen(p);
+		int         n;
+
+		n = snprintf(buf, sizeof(buf), "%.*s/%s", (int)len, p, cmd);
+
+		if (n > 0 && (size_t)n < sizeof(buf) && access(buf, X_OK) == 0)
+			return 1;
+
+		if (!end)
+			break;
+		p = end + 1;
+	}
+
+	return 0;
+}
+
+void
+execute_term(char **args)
+{
+	static const char *const vars[] = { "TERM", "TERMINAL" };
+
+	if (!args || !args[0])
+		die("execute_term: empty argument vector");
+
+	/*
+	 * $TERM usually holds a terminfo entry name such as "st-256color"
+	 * rather than a program, so each candidate is only taken when it
+	 * actually resolves to an executable. Otherwise the configured
+	 * terminal is used.
+	 */
+	for (size_t i = 0; i < sizeof(vars) / sizeof(vars[0]); i++) {
+		const char *v = getenv(vars[i]);
+
+		if (isexec(v)) {
+			args[0] = (char *)v;
+			break;
+		}
+	}
+
+	execute(args);
+}
+
 void
 executepath(const char *path, char **args)
 {

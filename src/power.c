@@ -243,7 +243,7 @@ main(void)
 		{ 1, on_left },
 	};
 
-	set_name("dwmblocks-power");
+	set_name("statusblocks-power");
 	clr_init();
 
 	dispatch(buttons, LEN(buttons), NULL);

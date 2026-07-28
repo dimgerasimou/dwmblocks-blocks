@@ -43,7 +43,7 @@ clr_hex(enum Color clr)
 #include <X11/Xlib.h>
 #include <X11/Xresource.h>
 
-#define CACHE_NAME "dwmblocks-colors"
+#define CACHE_NAME "statusblocks-colors"
 
 /* Resolved "#RRGGBB" values, and the escapes rendered from them. */
 static char hexes[CLR_SIZE][CLR_HEX_LEN] = {0};
@@ -228,13 +228,14 @@ cachestore(const char *path)
 }
 
 /*
- * Looks 'clr' up in 'db' under "dwmblocks.<name>" then "*<name>", keeping
+ * Looks 'clr' up in 'db' under "statusblocks.<name>" then "*<name>",
+ * keeping
  * the first valid hit.
  */
 static void
 clr_load(XrmDatabase db, enum Color clr)
 {
-	static const char *const prefixes[] = { "dwmblocks.", "*" };
+	static const char *const prefixes[] = { "statusblocks.", "*" };
 
 	XrmValue ret;
 	char    *type = NULL;

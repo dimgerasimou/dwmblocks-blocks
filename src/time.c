@@ -15,7 +15,7 @@ main(void)
 	struct tm *lt = NULL;
 	time_t     ct = 0;
 
-	set_name("dwmblocks-time");
+	set_name("statusblocks-time");
 	clr_init();
 
 	ct = time(NULL);

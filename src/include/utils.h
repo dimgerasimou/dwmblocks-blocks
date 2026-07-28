@@ -64,6 +64,13 @@ void execute(char **args);
 void executepath(const char *path, char **args);
 
 /*
+ * As execute(), but replaces args[0] with $TERM or $TERMINAL when either
+ * names a real executable, falling back to the configured terminal.
+ * Use for any command whose first element is term_cmd.
+ */
+void execute_term(char **args);
+
+/*
  * Expands a path into 'out'. A leading "~" or "~/" becomes $HOME, and
  * "$VAR" or "${VAR}" anywhere in the string is replaced by that variable.
  * A '$' not followed by a name is copied through literally.

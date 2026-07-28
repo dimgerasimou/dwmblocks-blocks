@@ -193,7 +193,7 @@ static void
 on_left(void *ctx)
 {
 	(void)ctx;
-	execute((char **)bt_tui_cmd);
+	execute_term((char **)bt_tui_cmd);
 }
 
 static void
@@ -213,7 +213,7 @@ main(void)
 
 	int state;
 
-	set_name("dwmblocks-bluetooth");
+	set_name("statusblocks-bluetooth");
 	clr_init();
 
 	dispatch(buttons, LEN(buttons), NULL);

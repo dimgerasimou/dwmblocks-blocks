@@ -153,7 +153,7 @@ initpa(void)
 		return 1;
 	}
 
-	if (!(pactx = pa_context_new(mlapi, "dwmblocks-volume"))) {
+	if (!(pactx = pa_context_new(mlapi, "statusblocks-volume"))) {
 		warn("pa_context_new() failed to initialize");
 		return 1;
 	}
@@ -290,7 +290,7 @@ main(void)
 	unsigned int volume;
 	unsigned int mute;
 
-	set_name("dwmblocks-volume");
+	set_name("statusblocks-volume");
 	clr_init();
 
 	getaudioinfo(a);

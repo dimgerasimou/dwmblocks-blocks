@@ -61,7 +61,7 @@ static void
 on_right(void *ctx)
 {
 	(void)ctx;
-	execute((char **)args_task_manager);
+	execute_term((char **)args_task_manager);
 }
 
 int
@@ -73,7 +73,7 @@ main(void)
 
 	long used_kib;
 
-	set_name("dwmblocks-memory");
+	set_name("statusblocks-memory");
 	clr_init();
 
 	dispatch(buttons, LEN(buttons), NULL);

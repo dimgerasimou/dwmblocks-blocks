@@ -14,7 +14,7 @@
 #define SYSTEM_C
 #define BUF_SIZE   64
 #define BODY_SIZE  128
-#define CACHE_NAME "dwmblocks-updates"
+#define CACHE_NAME "statusblocks-updates"
 #define LEN(a)     (sizeof(a) / sizeof((a)[0]))
 
 #include "colors.h"
@@ -219,7 +219,7 @@ static void
 on_right(void *ctx)
 {
 	(void)ctx;
-	execute((char **)args_update_cmd);
+	execute_term((char **)args_update_cmd);
 }
 
 int
@@ -234,7 +234,7 @@ main(void)
 	struct Updates  u = { -1, -1 };
 	char           *release = NULL;
 
-	set_name("dwmblocks-system");
+	set_name("statusblocks-system");
 	clr_init();
 
 	dispatch(buttons, LEN(buttons), &u);
