@@ -118,26 +118,6 @@ notify(const char *sum, const char *body, const char *icon)
 }
 
 void
-uitoa(const unsigned int in, char *out, const size_t outsz)
-{
-	size_t digits = 0;
-	int    n      = 0;
-
-	for (unsigned int i = in; i > 0; i = i / 10)
-		digits++;
-	if (!digits)
-		digits++;
-
-	if (digits + 1 > outsz)
-		die("uitoa: buffer too small for %u", in);
-
-	n = snprintf(out, digits + 1, "%u", in);
-
-	if (n < 0 || (size_t)n > digits)
-		die("snprintf: buffer overflow");
-}
-
-void
 execute(char **args)
 {
 	if (!args || !args[0])

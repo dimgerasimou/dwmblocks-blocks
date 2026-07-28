@@ -3,7 +3,6 @@
 #define _POSIX_C_SOURCE 200809L
 
 #include <dirent.h>
-#include <linux/limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -221,7 +220,7 @@ on_left(void *ctx)
 	const struct Status *s = ctx;
 	char                 c[12];
 
-	uitoa(s->cap, c, sizeof(c));
+	snprintf(c, sizeof(c), "%u", s->cap);
 	send_notification(c, s->st);
 }
 

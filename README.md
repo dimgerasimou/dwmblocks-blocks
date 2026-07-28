@@ -17,7 +17,7 @@ make
 make install
 ```
 
-Blocks are installed to `$(BLOCKDIR)`, which defaults to `~/.local/bin/dwmblocks`. Point your dwmblocks configuration at that directory.
+Blocks are installed to `$(BLOCKDIR)`, which defaults to `~/.local/bin/dwmblocks`. Point your dwmblocks configuration at that directory; `examples/blocks.h` is a ready-made starting point with suggested intervals and signals for every block, plus the pacman hook that pairs with the system block.
 
 Useful variables:
 
@@ -38,8 +38,6 @@ Other targets:
 
 ```bash
 make time          # build a single block
-make debug         # rebuild everything with ASan/UBSan and -fanalyzer
-make test          # build and run the test suite under sanitizers
 make clean
 make uninstall
 ```
@@ -57,54 +55,86 @@ Required for all blocks:
 - C compiler (gcc/clang) and make
 - `pkg-config`
 - `libnotify`
-- `libX11`
+- `libX11` (only for reading colours from Xresources; not needed with `-DNO_COLOR`)
 
-Per block, additionally: `libxkbfile` (keyboard), `dbus-1` (bluetooth), `libnm` and `glib-2.0` (internet), `libpulse` (volume). Runtime dependencies are listed per block below.
+Per block, additionally: `libxkbfile` (keyboard), `dbus-1` (bluetooth), `libnm` and `glib-2.0` (internet), `libpulse` (volume).
+
+The blocks read `/proc` and `/sys`, so they are Linux-only. Runtime dependencies are listed per block below and in the External programs section.
 
 ## Colours
 
-Colours are read at runtime from the X resource database, so changing a colour does not require a rebuild. There is no `colorscheme.h`; that file was removed and is no longer needed.
+Colours have sensible defaults in `config.h`, so the bar is themed out of the box with no further setup:
 
-Resolved colours are cached in `$XDG_RUNTIME_DIR/dwmblocks-colors`, so only the first block to run in a session opens an X connection. The cache is rebuilt automatically when `~/.Xresources` is newer than it, and `$XDG_RUNTIME_DIR` is cleared at logout. To force a rebuild mid-session:
+```c
+static const char *const clr_defaults[] = {
+	"#F38BA8",  /* clr_bat_crt  battery critical */
+	"#FAB387",  /* clr_bat_low  battery low      */
+	...
+};
+```
+
+Set an entry to `""` to leave that colour unset, so the block renders in the status bar's own colour. A compile-time check fails the build if the list and `enum Color` ever fall out of step.
+
+Any entry in the X resource database overrides the matching default at runtime, so a colour can be changed without rebuilding. Each colour is looked up first as `dwmblocks.<name>`, then as `*<name>`, and values must be exactly `#RRGGBB`; anything malformed is ignored in favour of the default.
+
+```
+dwmblocks.clr_bat_crt:  #F38BA8
+dwmblocks.clr_date:     #CBA6F7
+dwmblocks.clr_tim:      #FAB387
+dwmblocks.clr_cal:      #F38BA8
+```
+
+Apply with `xrdb -merge ~/.Xresources`.
+
+Resolved colours are cached in `$XDG_RUNTIME_DIR/dwmblocks-colors`, so only the first block to run in a session opens an X connection. The cache is rebuilt automatically when `~/.Xresources` is newer than it, or when the block binary is (so editing `clr_defaults` and rebuilding takes effect immediately). `$XDG_RUNTIME_DIR` is cleared at logout. To force a rebuild by hand:
 
 ```bash
 rm -f "$XDG_RUNTIME_DIR/dwmblocks-colors"
 ```
 
-Each colour is looked up first as `dwmblocks.<name>`, then as `*<name>`. Values must be exactly `#RRGGBB`. Anything missing or malformed is skipped, and the block renders in the status bar's default colour.
+If X is unreachable the configured defaults are used on their own, and nothing is cached, so colours appear as soon as X is available.
 
-Example `~/.Xresources`:
+### Using a different status bar
 
-```
-dwmblocks.clr_bat_crt:  #F38BA8
-dwmblocks.clr_bat_low:  #FAB387
-dwmblocks.clr_bat_nrm:  #A6E3A1
-dwmblocks.clr_bat_chg:  #A6E3A1
-dwmblocks.clr_bt:       #89B4FA
-dwmblocks.clr_date:     #CBA6F7
-dwmblocks.clr_net_nrm:  #94E2D5
-dwmblocks.clr_net_err:  #F38BA8
-dwmblocks.clr_krn_pkg:  #F9E2AF
-dwmblocks.clr_krn_nrm:  #89DCEB
-dwmblocks.clr_kbd:      #B4BEFE
-dwmblocks.clr_mem:      #F5C2E7
-dwmblocks.clr_pwr:      #F38BA8
-dwmblocks.clr_tim:      #FAB387
-dwmblocks.clr_vol_nrm:  #A6E3A1
-dwmblocks.clr_vol_mut:  #6C7086
-```
+The blocks are ordinary programs that print a line, so they work with any bar that can run a command. Only the colour escape is bar-specific, and it is two macros in `config.h`:
 
-Apply with `xrdb -merge ~/.Xresources`.
+| Bar                          | `CLR_FMT`               | `CLR_NRM`  |
+|------------------------------|-------------------------|------------|
+| dwm + status2d *(default)*   | `"^c%s^"`               | `"^d^"`    |
+| Pango markup (waybar, i3bar) | `"<span color='%s'>"`   | `"</span>"`|
+| polybar native               | `"%%{F%s}"`             | `"%%{F-}"` |
+| none                         | `"%.0s"`                | `""`       |
 
-Building with `-DNO_COLOR` compiles the colour lookup out entirely; every block then emits plain, uncoloured text and no longer needs an X connection for colours.
+`CLR_FMT` must contain exactly one `%s`, which receives a `#RRGGBB` string; the compiler checks this. Building with `-DNO_COLOR` compiles the colour lookup out entirely and removes the X dependency.
 
-If X is unreachable, blocks warn once on stderr and render without colour rather than failing.
+## Paths
 
-The calendar drawn by the date block uses Pango markup rather than the status bar's colour escapes, so its accent colour is a compile-time setting, found in the date section of `config.h`:
+Paths to helper scripts are single strings in `config.h` and are expanded at runtime:
 
 ```c
-#define CAL_ACCENT "#F38BA8"
+static const char path_volume_control[] = "~/.local/bin/dwm-audio";
 ```
+
+A leading `~` or `~/` becomes `$HOME`, and `$VAR` or `${VAR}` anywhere in the string is replaced by that environment variable. A `$` that is not followed by a variable name is left alone. An unset variable is an error: the action is skipped and a message is written to stderr, rather than running something from a half-built path.
+
+## External programs
+
+Most blocks display something with no help, but the click actions often shell out. Every such setting in `config.h` is marked `Requires:` with what it needs. In summary:
+
+| Block     | Needed for display | Needed for clicks                                    |
+|-----------|--------------------|------------------------------------------------------|
+| time      | —                  | —                                                     |
+| date      | —                  | a browser (default: zen-browser)                      |
+| memory    | —                  | a terminal and htop                                   |
+| battery   | —                  | optimus-manager, only with `POWER_MANAGEMENT`         |
+| keyboard  | —                  | a layout-switching script of your own                 |
+| bluetooth | bluez running      | a bluetooth TUI (default: bluetuith)                  |
+| internet  | NetworkManager     | xmenu, a TUI, and a wifi prompt script of your own    |
+| volume    | PulseAudio/PipeWire| a volume script of your own; an equalizer for middle click |
+| system    | a package manager  | a terminal and an upgrade command                     |
+| power     | —                  | xmenu, a locker (default: slock), dwmblocks           |
+
+The three "script of your own" entries default to helpers from [dimgerasimou/binaries](https://github.com/dimgerasimou/binaries). Substitute your own: any executable accepting the same arguments will do, for instance a `setxkbmap` wrapper for the keyboard block or a `wpctl` wrapper for volume. A block whose program is missing still displays correctly; the click does nothing and writes to stderr, which dwmblocks discards, so run the block by hand in a terminal to see the message.
 
 ## Icons and menus
 
@@ -176,7 +206,7 @@ Optional:
 - A TUI interface (default: nmtui through network-manager package running on st)
 - A wifi connection prompt (default: [dmenu-wifi-prompt](https://github.com/dimgerasimou/binaries))
 
-### kernel
+### system
 
 #### Usage
 
@@ -184,9 +214,31 @@ Returns the current kernel version and the number of packages to be updated, not
 
 Left click notifies the update counts; right click runs the upgrade command.
 
-Note that `checkupdates` exits 2 and `paru` exits 1 when there is nothing to update, so the exit status is ignored and only the line count is used.
+The block counts updates from two configurable sources and is not tied to Arch: set `cmd_updates_primary`, `cmd_updates_secondary`, their labels, and `update_watch_path` in `config.h`. Equivalents for apt, dnf and xbps are given in the comments there; set a command to `""` to disable that source. Each command should print one line per pending update, and the exit status is ignored, because several package managers exit non-zero precisely when there is nothing to update.
 
-Both update commands query the network, so their results are cached in `$XDG_RUNTIME_DIR/dwmblocks-updates` for `update_cache_ttl` seconds (one hour by default; set it in `config.h`). A left click always bypasses the cache and refreshes. If you run a pacman hook, writing `"<aur> <pacman>"` to that file is a cheaper way to keep the count current.
+Both update commands hit the network — `checkupdates` syncs the repository databases into a temporary path, and `paru -Qua` queries the AUR — so their results are cached in `$XDG_RUNTIME_DIR/dwmblocks-updates`. The cache is discarded when any of these happens:
+
+- `update_cache_ttl` seconds have passed (one hour by default; set it to `0` in `config.h` to disable caching and query on every run)
+- the pacman local database at `pacman_local_db` is newer than the cache
+- the block is left-clicked, which always refreshes
+
+The second rule is what makes a post-transaction hook work. dwmblocks re-executes the block on a signal rather than delivering the signal to it, so the block cannot tell a signalled run from a scheduled one. It can, however, see that a transaction happened, because installing or removing anything updates the mtime of `/var/lib/pacman/local`. A hook that signals dwmblocks therefore makes the count drop to zero on the very next run, with no cooperation needed from the hook itself:
+
+```ini
+[Trigger]
+Operation = Install
+Operation = Upgrade
+Operation = Remove
+Type = Package
+Target = *
+
+[Action]
+Description = Refresh the dwmblocks system block
+When = PostTransaction
+Exec = /usr/bin/pkill -RTMIN+<n> dwmblocks
+```
+
+This also avoids the obvious alternative of having the hook delete the cache file: hooks run as root and would not have a usable `$XDG_RUNTIME_DIR` for the logged-in user.
 
 #### Dependencies
 

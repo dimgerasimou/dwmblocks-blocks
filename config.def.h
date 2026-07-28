@@ -3,6 +3,26 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+/*
+ * HOW THIS FILE IS ORGANISED
+ *
+ * Everything before the first "#ifdef" is shared by every block. After
+ * that, each block has its own section guarded by a macro that only that
+ * block defines: battery.c does "#define BATTERY_C" before including this
+ * file, so it sees the BATTERY BLOCK section and nothing else.
+ *
+ * That is why names such as show_icon appear several times below without
+ * colliding: exactly one section is ever compiled into a given block. It
+ * also means a setting placed in the wrong section is silently ignored
+ * rather than reported, so keep each one under the block that reads it.
+ *
+ * Settings marked "Requires:" name an external program that must be on
+ * $PATH, or a script you must supply yourself. Clicking a block whose
+ * program is missing does nothing and writes a message to stderr, which
+ * dwmblocks discards; run the block by hand in a terminal to see it.
+ */
+
+/* Terminal used by blocks that open a TUI. Requires: this terminal. */
 static const char term_cmd[] = "st";
 static const char term_title_opt[] = "-t";
 
@@ -15,11 +35,11 @@ static const char term_title_opt[] = "-t";
  * exactly one %s, which receives a "#RRGGBB" string; CLR_NRM ends the
  * coloured run. The defaults target dwm's status2d patch.
  *
- *   NAME                            CLR_FMT                  CLR_NRM
- *   status2d (dwm)                  "^c%s^"                  "^d^"
- *   Pango (waybar, polybar, i3bar)  "<span color='%s'>"      "</span>"
- *   polybar native                  "%%{F%s}"                "%%{F-}"
- *   no colour                       "%.0s"                   ""
+ *   status2d (dwm)   "^c%s^"                  "^d^"
+ *   Pango (waybar,
+ *   polybar, i3bar)  "<span color='%s'>"      "</span>"
+ *   polybar native   "%%{F%s}"                "%%{F-}"
+ *   no colour        "%.0s"                   ""
  */
 #define CLR_FMT "^c%s^"
 #define CLR_NRM "^d^"
@@ -37,21 +57,21 @@ static const char term_title_opt[] = "-t";
  */
 static const char *const clr_defaults[] = {
 	"#F38BA8",  /* clr_bat_crt  battery critical */
-	"#F9E2AF",  /* clr_bat_low  battery low      */
-	"#CDD6F4",  /* clr_bat_nrm  battery normal   */
-	"#CDD6F4",  /* clr_bat_chg  battery charging */
-	"#CDD6F4",  /* clr_bt       bluetooth        */
-	"#CDD6F4",  /* clr_date     date             */
-	"#CDD6F4",  /* clr_net_nrm  network normal   */
+	"#FAB387",  /* clr_bat_low  battery low      */
+	"#A6E3A1",  /* clr_bat_nrm  battery normal   */
+	"#A6E3A1",  /* clr_bat_chg  battery charging */
+	"#89B4FA",  /* clr_bt       bluetooth        */
+	"#CBA6F7",  /* clr_date     date             */
+	"#94E2D5",  /* clr_net_nrm  network normal   */
 	"#F38BA8",  /* clr_net_err  network error    */
-	"#89B4FA",  /* clr_krn_pkg  pending updates  */
-	"#CDD6F4",  /* clr_krn_nrm  kernel release   */
-	"#CDD6F4",  /* clr_kbd      keyboard layout  */
-	"#CDD6F4",  /* clr_mem      memory           */
+	"#F9E2AF",  /* clr_sys_pkg  pending updates  */
+	"#89DCEB",  /* clr_sys_nrm  kernel release   */
+	"#B4BEFE",  /* clr_kbd      keyboard layout  */
+	"#F5C2E7",  /* clr_mem      memory           */
 	"#F38BA8",  /* clr_pwr      power menu       */
-	"#CDD6F4",  /* clr_tim      clock            */
-	"#CDD6F4",  /* clr_vol_nrm  volume normal    */
-	"#F38BA8",  /* clr_vol_mut  volume muted     */
+	"#FAB387",  /* clr_tim      clock            */
+	"#A6E3A1",  /* clr_vol_nrm  volume normal    */
+	"#6C7086",  /* clr_vol_mut  volume muted     */
 	"#F38BA8"   /* clr_cal      calendar accent   */
 };
 
@@ -99,7 +119,7 @@ static const char *const icons_bluetooth[] = {
 /* Show calendar icon in bar */
 const unsigned int show_icon = 1;
 
-/* GUI calendar application */
+/* Calendar opened on right click. Requires: the browser named below. */
 const char *args_gui_calendar[] = {
 	"zen-browser",
 	"--new-window",
@@ -108,8 +128,16 @@ const char *args_gui_calendar[] = {
 };
 
 
+/*
+ * First column of the calendar, as a tm_wday value: 1 = Monday (most of
+ * Europe), 0 = Sunday (US), 6 = Saturday. Month and weekday names come
+ * from the locale, so run the date block under the locale you want.
+ */
+static const int calendar_week_start = 1;
+
 /* Icon shown in the bar when show_icon is set. */
 static const char icon_date[] = " ";
+
 #endif
 
 /* ============================================================
@@ -126,7 +154,7 @@ const char *args_tui_internet[] = {
 };
 
 /* WiFi connection script */
-const char *path_wifi_connect = "~/.local/bin/dmenu-wifi-prompt";
+static const char path_wifi_connect[] = "~/.local/bin/dmenu-wifi-prompt";
 const char *args_wifi_connect[] = {"dmenu-wifi-prompt", NULL};
 
 
@@ -154,11 +182,37 @@ static const char menu_internet[] = "󱛄 Toggle Wifi\t0\n󱛃 Connect to wifi\t
 #endif
 
 /* ============================================================
- * KERNEL BLOCK
+ * SYSTEM BLOCK
  * ============================================================ */
-#ifdef KERNEL_C
+#ifdef SYSTEM_C
 
-/* System update command */
+/*
+ * The block counts pending updates from two sources and shows the kernel
+ * release. Nothing below is distribution-specific; the defaults are for
+ * Arch, and the comments give equivalents for other package managers.
+ * Set a command to "" to disable that source.
+ *
+ *   Debian/Ubuntu   primary:   "apt list --upgradable 2>/dev/null | tail -n +2"
+ *                   watch:     "/var/lib/dpkg/status"
+ *   Fedora          primary:   "dnf -q --refresh check-update"
+ *                   watch:     "/var/lib/rpm"
+ *   void            primary:   "xbps-install -Mun"
+ *                   watch:     "/var/db/xbps"
+ *
+ * Each command should print one line per pending update; only the line
+ * count is used. A non-zero exit status is ignored, because several of
+ * these exit non-zero precisely when there is nothing to update.
+ */
+
+/* Requires: a package manager, and an AUR helper for the secondary source. */
+const char *cmd_updates_primary   = "/bin/checkupdates";
+const char *cmd_updates_secondary = "/bin/paru -Qua";
+
+/* Labels used in the notification, one per source. */
+static const char label_updates_primary[]   = "Pacman Updates";
+static const char label_updates_secondary[] = "AUR Updates";
+
+/* System update command. Requires: a package manager. */
 const char *args_update_cmd[] = {
 	term_cmd,
 	term_title_opt, "System Upgrade",
@@ -167,22 +221,19 @@ const char *args_update_cmd[] = {
 	NULL
 };
 
-/* Package update check commands */
-const char *cmd_aur_updates = "/bin/paru -Qua";
-const char *cmd_pm_updates  = "/bin/checkupdates";
-
 /* Show release info in bar */
 const unsigned int show_release = 1;
 
 /* Show update count in bar*/
 const unsigned int show_update_count = 1;
 
-
 /* Bar icons: the kernel (tux) glyph and the pending-updates glyph. */
-static const char icon_kernel_tux[] = "";
-static const char icon_kernel_pkg[] = "󰏖";
-static const char icon_kernel_pacman[] = "󰏖";
-static const char icon_kernel_aur[] = "";
+static const char icon_system_kernel[] = "";
+static const char icon_system_pkg[] = "󰏖";
+
+/* Notification icons, one per update source. */
+static const char icon_updates_primary[]   = "󰏖";
+static const char icon_updates_secondary[] = "";
 
 /*
  * Seconds before cached update counts are refreshed. Set to 0 to disable
@@ -192,10 +243,12 @@ static const long update_cache_ttl = 3600;
 
 /*
  * The cache is also invalidated whenever this path's mtime is newer than
- * it, which is how a pacman post-transaction hook makes the count drop to
- * zero immediately instead of waiting for the TTL.
+ * it, so a post-transaction hook from the package manager makes the count
+ * drop to zero immediately instead of waiting for the TTL. Point it at
+ * whatever the package manager rewrites when it installs or removes
+ * something. Set to "" to rely on the TTL alone.
  */
-static const char pacman_local_db[] = "/var/lib/pacman/local";
+static const char update_watch_path[] = "/var/lib/pacman/local";
 #endif
 
 /* ============================================================
@@ -205,8 +258,13 @@ static const char pacman_local_db[] = "/var/lib/pacman/local";
 
 const unsigned int show_icon = 1;
 
-/* Keyboard layout switching script */
-const char *path_language_switch = "~/.local/bin/dwm-xkbnext";
+/*
+ * Keyboard layout switching script, run on left click.
+ * Requires: a script of your own that cycles the layout. The default
+ * points at dwm-xkbnext from https://github.com/dimgerasimou/binaries
+ * A plain alternative: setxkbmap with your layouts, wrapped in a script.
+ */
+static const char path_language_switch[] = "~/.local/bin/dwm-xkbnext";
 const char *args_language_switch[] = { "dwm-xkbnext", NULL };
 
 
@@ -221,7 +279,7 @@ static const char icon_keyboard[] = " ";
 
 const unsigned int show_icon = 1;
 
-/* Task manager application */
+/* Task manager, opened on right click. Requires: htop, and term_cmd. */
 const char *args_task_manager[] = { term_cmd, "sh", "-c", "htop", NULL };
 
 
@@ -240,11 +298,12 @@ static const char icon_memory[] = " ";
 /* Enable power management features (optimus-manager support) */
 #define POWER_MANAGEMENT
 
-/* dwmblocks executable path and arguments */
-const char *path_dwmblocks = "/usr/local/bin/dwmblocks";
-const char *args_dwmblocks[] = {"dwmblocks", NULL};
+/* Path to the status bar itself, restarted from the power menu.
+ * Requires: dwmblocks. Adjust if yours is installed elsewhere. */
+static const char path_dwmblocks[] = "/usr/local/bin/dwmblocks";
+const char *args_dwmblocks[]        = {"dwmblocks", NULL};
 
-/* Lock screen command */
+/* Lock screen command. Requires: slock, or any locker you prefer. */
 const char *args_lockscreen[]       = {"slock", NULL};
 
 /* Clipboard management */
@@ -298,6 +357,12 @@ const char *args_eqalizer[]        = {"easyeffects", NULL};
 const char *args_volume_increase[] = {"dwm-audio", "up", NULL};
 const char *args_volume_decrase[]  = {"dwm-audio", "down", NULL};
 const char *args_volume_mute[]     = {"dwm-audio", "mute", NULL};
+/*
+ * Volume control script, run on middle click and scroll.
+ * Requires: a script of your own accepting "up", "down" and "mute". The
+ * default points at dwm-audio from https://github.com/dimgerasimou/binaries
+ * A plain alternative: a wrapper around wpctl or pamixer.
+ */
 static const char path_volume_control[] = "~/.local/bin/dwm-audio";
 
 

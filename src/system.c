@@ -11,7 +11,7 @@
 #include <time.h>
 #include <unistd.h>
 
-#define KERNEL_C
+#define SYSTEM_C
 #define BUF_SIZE   64
 #define BODY_SIZE  128
 #define CACHE_NAME "dwmblocks-updates"
@@ -21,15 +21,16 @@
 #include "utils.h"
 #include "config.h"
 
+/* Pending update counts, one per configured source. */
 struct Updates {
-	int aur;
-	int pm;
+	int primary;
+	int secondary;
 };
 
 /*
- * Counts the lines produced by 'cmd'. These commands query the network
- * (paru hits the AUR RPC, checkupdates syncs a temporary database), which
- * is why the result is cached rather than recomputed every refresh.
+ * Counts the lines produced by 'cmd', or 0 if 'cmd' is empty. These
+ * commands typically query the network, which is why the result is cached
+ * rather than recomputed on every refresh.
  */
 static int
 getupdates(const char *cmd)
@@ -52,8 +53,9 @@ getupdates(const char *cmd)
 
 	/*
 	 * The exit status is deliberately ignored: checkupdates exits 2 and
-	 * paru exits 1 when there is simply nothing to update, so a non-zero
-	 * status is the normal case rather than a failure.
+	 * paru exits 1 when there is simply nothing to update, and other
+	 * package managers behave similarly, so a non-zero status is the
+	 * normal case rather than a failure.
 	 */
 	pclose(ep);
 
@@ -76,12 +78,12 @@ cachepath(char *out, const size_t outsz)
 }
 
 /*
- * The cache is stale once the TTL has passed, or as soon as the pacman
- * local database is newer than it. The second test is what makes a
+ * The cache is stale once the TTL has passed, or as soon as the watched
+ * package-manager path is newer than it. The second test is what makes a
  * post-transaction hook work: the block cannot observe the signal that
  * dwmblocks sends (it is simply re-executed), but installing or removing
- * a package always touches the local database, so the count refreshes on
- * the very next run instead of waiting out the TTL.
+ * a package always rewrites that path, so the count refreshes on the very
+ * next run instead of waiting out the TTL.
  */
 static int
 cachestale(const struct stat *cst)
@@ -91,7 +93,7 @@ cachestale(const struct stat *cst)
 	if (time(NULL) - cst->st_mtime > update_cache_ttl)
 		return 1;
 
-	if (pacman_local_db[0] && stat(pacman_local_db, &dbst) == 0 &&
+	if (update_watch_path[0] && stat(update_watch_path, &dbst) == 0 &&
 	    dbst.st_mtime > cst->st_mtime)
 		return 1;
 
@@ -120,7 +122,7 @@ cacheload(const char *path, struct Updates *u)
 	if (!fp)
 		return 1;
 
-	ok = (fscanf(fp, "%d %d", &u->aur, &u->pm) == 2);
+	ok = (fscanf(fp, "%d %d", &u->primary, &u->secondary) == 2);
 	fclose(fp);
 
 	return ok ? 0 : 1;
@@ -149,7 +151,7 @@ cachestore(const char *path, const struct Updates *u)
 		return;
 	}
 
-	fprintf(fp, "%d %d\n", u->aur, u->pm);
+	fprintf(fp, "%d %d\n", u->primary, u->secondary);
 
 	if (fclose(fp) != 0 || rename(tmp, path) != 0)
 		unlink(tmp);
@@ -161,10 +163,10 @@ refresh(struct Updates *u)
 {
 	char path[PATH_MAX];
 
-	u->aur = getupdates(cmd_aur_updates);
-	u->pm  = getupdates(cmd_pm_updates);
+	u->primary   = getupdates(cmd_updates_primary);
+	u->secondary = getupdates(cmd_updates_secondary);
 
-	if (u->aur < 0 || u->pm < 0)
+	if (u->primary < 0 || u->secondary < 0)
 		return;
 
 	if (update_cache_ttl > 0 && cachepath(path, sizeof(path)) == 0)
@@ -196,15 +198,16 @@ on_left(void *ctx)
 	/* An explicit click is a request for current numbers, so bypass the cache. */
 	refresh(u);
 
-	if (u->aur < 0 || u->pm < 0) {
+	if (u->primary < 0 || u->secondary < 0) {
 		notify("Packages", "Failed to query package updates.", "tux");
 		return;
 	}
 
 	n = snprintf(body, sizeof(body),
-	             "%s Pacman Updates: %d\n"
-	             "%s AUR Updates: %d",
-	             icon_kernel_pacman, u->pm, icon_kernel_aur, u->aur);
+	             "%s %s: %d\n"
+	             "%s %s: %d",
+	             icon_updates_primary, label_updates_primary, u->primary,
+	             icon_updates_secondary, label_updates_secondary, u->secondary);
 
 	if (n < 0 || (size_t)n >= sizeof(body))
 		warn("notification body truncated");
@@ -231,12 +234,12 @@ main(void)
 	struct Updates  u = { -1, -1 };
 	char           *release = NULL;
 
-	set_name("dwmblocks-kernel");
+	set_name("dwmblocks-system");
 	clr_init();
 
 	dispatch(buttons, LEN(buttons), &u);
 
-	if (u.aur < 0 || u.pm < 0)
+	if (u.primary < 0 || u.secondary < 0)
 		getcounts(&u);
 
 	if (show_release) {
@@ -253,13 +256,13 @@ main(void)
 		}
 	}
 
-	if (u.aur > 0 || u.pm > 0) {
-		printf("%s%s ", clr_get(clr_krn_pkg), icon_kernel_pkg);
+	if (u.primary > 0 || u.secondary > 0) {
+		printf("%s%s ", clr_get(clr_sys_pkg), icon_system_pkg);
 		if (show_update_count)
-			printf("%d ", u.aur + u.pm);
+			printf("%d ", u.primary + u.secondary);
 	}
 
-	printf("%s%s", clr_get(clr_krn_nrm), icon_kernel_tux);
+	printf("%s%s", clr_get(clr_sys_nrm), icon_system_kernel);
 
 	if (show_release && release && *release)
 		printf(" %s", release);

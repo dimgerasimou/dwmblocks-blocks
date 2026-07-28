@@ -3,8 +3,17 @@
 #ifndef UTILS_H
 #define UTILS_H
 
+#include <limits.h>
 #include <stddef.h>
 #include <sys/types.h>
+
+/*
+ * POSIX allows PATH_MAX to be absent when the limit is indeterminate.
+ * Every path buffer here is bounded and checked, so a fixed cap is safe.
+ */
+#ifndef PATH_MAX
+#define PATH_MAX 4096
+#endif
 
 void set_name(const char *name);
 const char *get_name(void);
@@ -27,12 +36,6 @@ void *erealloc(void *ptr, const size_t size);
 
 /* Sends a single desktop notification with normal urgency. */
 void notify(const char *sum, const char *body, const char *icon);
-
-/*
- * Writes the decimal representation of 'in' into 'out'.
- * Dies if 'out' is too small to hold it.
- */
-void uitoa(const unsigned int in, char *out, const size_t outsz);
 
 /* One entry of a block's BLOCK_BUTTON dispatch table. */
 struct Button {
