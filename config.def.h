@@ -292,10 +292,9 @@ static const char icon_memory[] = " ";
 /* Enable power management features (optimus-manager support) */
 #define POWER_MANAGEMENT
 
-/* Path to the status bar itself, restarted from the power menu.
- * Requires: dwmblocks. Adjust if yours is installed elsewhere. */
-static const char path_dwmblocks[] = "/usr/local/bin/dwmblocks";
-const char *args_dwmblocks[]        = {"dwmblocks", NULL};
+/* Status bar restart cmd.
+ * Requires: dwmblocks. Adjust if yours is something else. */
+const char *args_dwmblocks_restart[] = {"dwmblocks", "--restart", NULL};
 
 /* Lock screen command. Requires: slock, or any locker you prefer. */
 const char *args_lockscreen[]       = {"slock", NULL};

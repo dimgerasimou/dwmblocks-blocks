@@ -114,31 +114,6 @@ optimusmenu(void)
 #endif
 
 static void
-restartdwmblocks(void)
-{
-	char  path[PATH_MAX];
-	pid_t pid;
-
-	pid = getpidof("dwmblocks");
-
-	if (pid < 0 && envexpand(path_dwmblocks, path, sizeof(path)) == 0)
-		pid = getpidof(path);
-
-	if (pid < 0) {
-		warn("failed to get the pid of dwmblocks");
-		return;
-	}
-
-	if (kill(pid, SIGTERM) < 0) {
-		warn("kill() for dwmblocks:");
-		return;
-	}
-
-	unsetenv("BLOCK_BUTTON");
-	execute((char **)args_dwmblocks);
-}
-
-static void
 lockscreen(void)
 {
 	sleep(1);
@@ -209,7 +184,8 @@ mainmenu(void)
 		break;
 
 	case 4:
-		restartdwmblocks();
+		unsetenv("BLOCK_BUTTON");
+		execute((char **)args_dwmblocks_restart);
 		break;
 
 #ifdef POWER_MANAGEMENT
